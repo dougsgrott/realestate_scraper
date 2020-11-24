@@ -4,8 +4,9 @@
 # https://docs.scrapy.org/en/latest/topics/items.html
 
 import scrapy
-from itemloaders.processors import Compose, TakeFirst, Join
+from itemloaders.processors import Compose, TakeFirst, Join, MapCompose
 import re
+from w3lib.html import remove_tags
 
 def cleanText(text):
     processed_text = []
@@ -45,21 +46,17 @@ class ImoveisSCItem(scrapy.Item):
     caracteristicas_simples = scrapy.Field(
         output_processor=TakeFirst()
     )
-    #var1_name_list = scrapy.Field()
-    #var1_value_list = scrapy.Field()
     
-    description_header = scrapy.Field(
-        input_processor=cleanText,
-        output_processor=TakeFirst()
-    )
+    # description_header = scrapy.Field(
+    #     input_processor=cleanText,
+    #     output_processor=TakeFirst()
+    # )
 
     description = scrapy.Field(
         input_processor=Compose(cleanText, Join(separator='<br>')),
         output_processor=TakeFirst()
     )
 
-    #var2_subtitle_list = scrapy.Field()
-    #var2_value_list = scrapy.Field()
     caracteristicas_detalhes = scrapy.Field(
         output_processor=TakeFirst()
     )
@@ -70,14 +67,25 @@ class ImoveisSCItem(scrapy.Item):
     )
 
     advertiser = scrapy.Field(output_processor=TakeFirst())
+    advertiser_info = scrapy.Field(
+        input_processor=MapCompose(remove_tags),
+        output_processor=TakeFirst()
+        )
 
     url = scrapy.Field(output_processor=TakeFirst())
-    date_year = scrapy.Field(output_processor=TakeFirst())
-    date_month = scrapy.Field(output_processor=TakeFirst())
-    date_day = scrapy.Field(output_processor=TakeFirst())
+    date_scraped = scrapy.Field(output_processor=TakeFirst())
+    # date_scraped_year = scrapy.Field(output_processor=TakeFirst())
+    # date_scraped_month = scrapy.Field(output_processor=TakeFirst())
+    # date_scraped_day = scrapy.Field(output_processor=TakeFirst())
 
     
-
+class ImoveisSCCatalogItem(scrapy.Item):
+    title = scrapy.Field()
+    code = scrapy.Field()
+    local = scrapy.Field()
+    description = scrapy.Field(input_processor=cleanText)
+    url = scrapy.Field()
+    date_scraped = scrapy.Field()
 
 class RealestateScraperItem(scrapy.Item):
     # define the fields for your item here like:

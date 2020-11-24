@@ -32,7 +32,7 @@ from items import ImoveisSCItem
 
 class ImoveisSCSpider(Spider):
     name = 'imoveis_sc'
-    start_urls = ['https://www.imoveis-sc.com.br/sao-francisco-do-sul/comprar/casa?page=1']  # LEVEL 1
+    start_urls = ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa']  # LEVEL 1
     custom_settings = {
         'AUTOTHROTTLE_ENABLED': True,
         'AUTOTHROTTLE_DEBUG': True,
@@ -42,14 +42,16 @@ class ImoveisSCSpider(Spider):
 
     # 1. FOLLOWING LEVEL 1
     def parse(self, response):
+        i = 0
         for follow_url in response.xpath('//a[contains(@class, "btn-visualizar")]/@href').extract():
-            yield response.follow(follow_url, self.populate_item)
+            i += 1
+            #yield response.follow(follow_url, self.populate_item)
         yield self.paginate(response)
+        print("EOL - {}".format(i))
 
     # 2. SCRAPING LEVEL 2
     def populate_item(self, response):
-        item_loader = ItemLoader(ImoveisSCItem(), response=response)        
-        #item_loader.default_input_processor = MapCompose(remove_tags)
+        item_loader = ItemLoader(ImoveisSCItem(), response=response)
 
         # Header data
         item_loader.add_xpath('title', '//*[@class="visualizar-title"]/text()') #title = response.xpath('//*[@class="visualizar-title"]/text()').getall()
@@ -64,19 +66,12 @@ class ImoveisSCSpider(Spider):
             key = li.xpath('.//i').attrib['class'].split('-')[-1]
             value = li.xpath('./strong/text()').get()
             caracteristicas_simples[key] = value
-            #var1_name_list.append(li.xpath('.//i').attrib['class'].split('-')[-1])
-            #var1_value_list.append(li.xpath('./strong/text()').get())
         
         item_loader.add_value('caracteristicas_simples', caracteristicas_simples)
-        #item_loader.add_value('var1_name_list', var1_name_list)
-        #item_loader.add_value('var1_value_list', var1_value_list)
-
 
         # 'descricao' Section data
-        #description_header = response.xpath('//*[@class="visualizar-descricao"]/descendant::*/text()').getall()[0]
-        #description = response.xpath('//*[@class="visualizar-descricao"]/descendant::*/text()').getall()[1:]
         item_loader.add_xpath('description', '//*[@class="visualizar-descricao"]/descendant::*/text()')
-        item_loader.add_xpath('description_header', '//*[@class="visualizar-descricao"]/descendant::*/text()')
+        #item_loader.add_xpath('description_header', '//*[@class="visualizar-descricao"]/descendant::*/text()')
 
         # 'caracteristicas' Section data
         var2_subtitle_list = []
@@ -86,29 +81,22 @@ class ImoveisSCSpider(Spider):
             key = li.xpath('.//*[@class="visualizacao-section-subtitle"]/text()').get()
             value = li.xpath('./ul/li/text()').getall()
             caracteristicas_detalhes[key] = value
-            #var2_subtitle_list.append(li.xpath('.//*[@class="visualizacao-section-subtitle"]/text()').get())
-            #var2_value_list.append(li.xpath('./ul/li/text()').getall())
         item_loader.add_value('caracteristicas_detalhes', caracteristicas_detalhes)
 
         # 'endereco' Section data
         item_loader.add_xpath('address', '//*[@class="visualizar-endereco-texto"]/text()')
-        #address = response.xpath('//*[@class="visualizar-endereco-texto"]/text()').getall()
 
         # 'anunciante' Section data
-
         advertiser = response.xpath('//*[@class="visualizar-anunciante-info-nome"]').attrib['title']
         item_loader.add_value('advertiser', advertiser)
-        #advertiser = response.xpath('//*[@class="visualizar-anunciante-info-nome"]/text()').getall()
-
+        item_loader.add_xpath('advertiser_info', '//span[@class="visualizar-anunciante-info-creci"]')
+        
         # auxiliary data
         item_loader.add_value('url', response.url)
-        item_loader.add_value('date_year', datetime.now().year)
-        item_loader.add_value('date_month', datetime.now().month)
-        item_loader.add_value('date_day', datetime.now().day)
-        #url = response.url
-        #date_year = datetime.now().year
-        #date_month = datetime.now().month
-        #date_day = datetime.now().day
+        item_loader.add_value('date_scraped', datetime.now().isoformat(' '))
+        # item_loader.add_value('date_scraped_year', datetime.now().year)
+        # item_loader.add_value('date_scraped_month', datetime.now().month)
+        # item_loader.add_value('date_scraped_day', datetime.now().day)
 
         item_loader.load_item()
 
@@ -117,14 +105,14 @@ class ImoveisSCSpider(Spider):
 
     # 3. PAGINATION LEVEL 1
     def paginate(self, response):
-        next_page_url = response.xpath('//a[@class="next"]').extract_first()  # pagination("next button") <a> element here
+        next_page_url = response.xpath('//a[@class="next"]/@href').get()
         if next_page_url is not None:
             return response.follow(next_page_url, self.parse)
 
 
-process = CrawlerProcess()
-process.crawl(ImoveisSCSpider)
-process.start()
+# process = CrawlerProcess()
+# process.crawl(ImoveisSCSpider)
+# process.start()
 
 
 

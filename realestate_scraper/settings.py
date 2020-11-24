@@ -62,9 +62,11 @@ ROBOTSTXT_OBEY = True
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'realestate_scraper.pipelines.RealestateScraperPipeline': 300,
-#}
+ITEM_PIPELINES = {
+   'realestate_scraper.pipelines.SaveImoveisSCCatalogPipeline': 300,
+}
+
+CONNECTION_STRING = 'sqlite:////home/user/PythonProj/Scraping/realestate_scraper/realestate_scraperimoveis_sc_catalog.db'
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
