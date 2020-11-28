@@ -22,36 +22,52 @@ from scrapy.loader import ItemLoader
 from scrapy.loader.processors import MapCompose
 from scrapy.spiders import Spider
 from scrapy import Request
+from scrapy.utils.project import get_project_settings
 from w3lib.html import remove_tags
+from itemloaders.processors import TakeFirst
 
 from datetime import datetime
 import sys
 
+#from realestate_scraper.models import ImoveisSCCatalog, create_table, db_connect
+
 sys.path.append("/home/user/PythonProj/Scraping/realestate_scraper/realestate_scraper")
 from items import ImoveisSCItem
+from models import ImoveisSCCatalog, create_table, db_connect
+from sqlalchemy.orm import sessionmaker
 
 class ImoveisSCSpider(Spider):
     name = 'imoveis_sc'
-    start_urls = ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa']  # LEVEL 1
+    start_urls = []
     custom_settings = {
         'AUTOTHROTTLE_ENABLED': True,
         'AUTOTHROTTLE_DEBUG': True,
         'DOWNLOAD_DELAY': 5,
         'ROBOTSTXT_OBEY': False,
+        'ITEM_PIPELINES': {
+            'realestate_scraper.pipelines.UpdateCatalogDatabasePipeline': 200,
+            'realestate_scraper.pipelines.JsonWriterPipeline': 100,
+        }
     }
 
-    # 1. FOLLOWING LEVEL 1
-    def parse(self, response):
-        i = 0
-        for follow_url in response.xpath('//a[contains(@class, "btn-visualizar")]/@href').extract():
-            i += 1
-            #yield response.follow(follow_url, self.populate_item)
-        yield self.paginate(response)
-        print("EOL - {}".format(i))
+    def start_requests(self):
+        engine = db_connect()
+        create_table(engine)
+        factory = sessionmaker(bind=engine)
+        session = factory()
+        rows_not_scraped = session.query(ImoveisSCCatalog).filter(ImoveisSCCatalog.data_scraped==False)
+        urls_to_be_scraped = [row.url for row in rows_not_scraped]
+        ids = [row.id for row in rows_not_scraped]
 
-    # 2. SCRAPING LEVEL 2
-    def populate_item(self, response):
+        #for url in urls_to_be_scraped:
+        for i in range(len(urls_to_be_scraped)):
+            yield Request(url=urls_to_be_scraped[i], callback=self.parse, meta={"catalogo_id": ids[i]})
+
+    def parse(self, response):
         item_loader = ItemLoader(ImoveisSCItem(), response=response)
+        item_loader.default_output_processor = TakeFirst()
+
+        item_loader._add_value('id', response.meta["catalogo_id"])
 
         # Header data
         item_loader.add_xpath('title', '//*[@class="visualizar-title"]/text()') #title = response.xpath('//*[@class="visualizar-title"]/text()').getall()
@@ -93,26 +109,16 @@ class ImoveisSCSpider(Spider):
         
         # auxiliary data
         item_loader.add_value('url', response.url)
-        item_loader.add_value('date_scraped', datetime.now().isoformat(' '))
-        # item_loader.add_value('date_scraped_year', datetime.now().year)
-        # item_loader.add_value('date_scraped_month', datetime.now().month)
-        # item_loader.add_value('date_scraped_day', datetime.now().day)
+        item_loader.add_value('date', datetime.now().isoformat(' '))
 
-        item_loader.load_item()
+        foo = item_loader.load_item()
 
-        # item_loader.add_css("", "")
         yield item_loader.load_item()
 
-    # 3. PAGINATION LEVEL 1
-    def paginate(self, response):
-        next_page_url = response.xpath('//a[@class="next"]/@href').get()
-        if next_page_url is not None:
-            return response.follow(next_page_url, self.parse)
-
-
-# process = CrawlerProcess()
-# process.crawl(ImoveisSCSpider)
-# process.start()
+if __name__ == "__main__":
+    process = CrawlerProcess(get_project_settings())
+    process.crawl(ImoveisSCSpider)
+    process.start()
 
 
 

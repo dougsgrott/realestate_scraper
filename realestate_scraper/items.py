@@ -15,10 +15,10 @@ def cleanText(text):
         #subtext = re.split('-| - |,|, ', subtext)
         subtext = subtext.lstrip()
         subtext = subtext.rstrip()
-        
         processed_text.append(subtext)
 
     return processed_text
+
 
 def cleanAndBreakText(text):
     for subtext in text:
@@ -28,55 +28,20 @@ def cleanAndBreakText(text):
         subtext = [string.rstrip() for string in subtext]
     return text
 
+
 class ImoveisSCItem(scrapy.Item):
-    title = scrapy.Field(
-        input_processor=cleanText,
-        output_processor=TakeFirst()
-    )
-    code = scrapy.Field(
-        input_processor=cleanText,
-        output_processor=TakeFirst()
-    )
-
-    price = scrapy.Field(
-        input_processor=cleanText,
-        output_processor=TakeFirst()
-    )
-
-    caracteristicas_simples = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-    
-    # description_header = scrapy.Field(
-    #     input_processor=cleanText,
-    #     output_processor=TakeFirst()
-    # )
-
-    description = scrapy.Field(
-        input_processor=Compose(cleanText, Join(separator='<br>')),
-        output_processor=TakeFirst()
-    )
-
-    caracteristicas_detalhes = scrapy.Field(
-        output_processor=TakeFirst()
-    )
-
-    address = scrapy.Field(
-        input_processor=cleanText,
-        output_processor=TakeFirst()
-    )
-
+    id = scrapy.Field()
+    title = scrapy.Field(input_processor=cleanText)
+    code = scrapy.Field(input_processor=cleanText)
+    price = scrapy.Field(input_processor=cleanText)
+    caracteristicas_simples = scrapy.Field()
+    description = scrapy.Field(input_processor=Compose(cleanText, Join(separator='<br>')))
+    caracteristicas_detalhes = scrapy.Field()
+    address = scrapy.Field(input_processor=cleanText)
     advertiser = scrapy.Field(output_processor=TakeFirst())
-    advertiser_info = scrapy.Field(
-        input_processor=MapCompose(remove_tags),
-        output_processor=TakeFirst()
-        )
-
+    advertiser_info = scrapy.Field(input_processor=MapCompose(remove_tags))
     url = scrapy.Field(output_processor=TakeFirst())
-    date_scraped = scrapy.Field(output_processor=TakeFirst())
-    # date_scraped_year = scrapy.Field(output_processor=TakeFirst())
-    # date_scraped_month = scrapy.Field(output_processor=TakeFirst())
-    # date_scraped_day = scrapy.Field(output_processor=TakeFirst())
+    date = scrapy.Field(output_processor=TakeFirst())
 
     
 class ImoveisSCCatalogItem(scrapy.Item):
@@ -85,7 +50,8 @@ class ImoveisSCCatalogItem(scrapy.Item):
     local = scrapy.Field()
     description = scrapy.Field(input_processor=cleanText)
     url = scrapy.Field()
-    date_scraped = scrapy.Field()
+    date = scrapy.Field()
+
 
 class RealestateScraperItem(scrapy.Item):
     # define the fields for your item here like:
