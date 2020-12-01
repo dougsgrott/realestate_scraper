@@ -108,9 +108,13 @@ class ImoveisSCSpider(Spider):
         item_loader.add_xpath('advertiser_info', '//span[@class="visualizar-anunciante-info-creci"]')
         
         # auxiliary data
+        item_loader.add_value('local', response.url)
+        item_loader.add_value('business_type', response.url)
+        item_loader.add_value('property_type', response.url)
+
         item_loader.add_value('url', response.url)
         item_loader.add_value('date', datetime.now().isoformat(' '))
-
+        
         foo = item_loader.load_item()
 
         yield item_loader.load_item()

@@ -28,6 +28,20 @@ def cleanAndBreakText(text):
         subtext = [string.rstrip() for string in subtext]
     return text
 
+def getLocal(text):
+    substring = text.split('/')[3]
+    substring = substring.replace('-', ' ')
+    return substring
+
+def getBusinessType(text):
+    substring = text.split('/')[4]
+    substring = substring.replace('-', ' ')
+    return substring
+
+def getPropertyType(text):
+    substring = text.split('/')[5]
+    substring = substring.replace('-', ' ')
+    return substring
 
 class ImoveisSCItem(scrapy.Item):
     id = scrapy.Field()
@@ -38,8 +52,12 @@ class ImoveisSCItem(scrapy.Item):
     description = scrapy.Field(input_processor=Compose(cleanText, Join(separator='<br>')))
     caracteristicas_detalhes = scrapy.Field()
     address = scrapy.Field(input_processor=cleanText)
-    advertiser = scrapy.Field(output_processor=TakeFirst())
+    advertiser = scrapy.Field()
     advertiser_info = scrapy.Field(input_processor=MapCompose(remove_tags))
+    local = scrapy.Field(input_processor=MapCompose(getLocal))
+    business_type = scrapy.Field(input_processor=MapCompose(getBusinessType))
+    property_type = scrapy.Field(input_processor=MapCompose(getPropertyType))
+    #https://www.../governador-celso-ramos/comprar/sala-escritorio
     url = scrapy.Field(output_processor=TakeFirst())
     date = scrapy.Field(output_processor=TakeFirst())
 
