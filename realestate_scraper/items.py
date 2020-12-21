@@ -67,8 +67,12 @@ class ImoveisSCCatalogItem(scrapy.Item):
     code = scrapy.Field()
     local = scrapy.Field()
     description = scrapy.Field(input_processor=cleanText)
+    region = scrapy.Field(input_processor=MapCompose(getLocal))
     url = scrapy.Field()
     date = scrapy.Field()
+
+    # def __repr__(self):
+    #     return ""
 
 
 class RealestateScraperItem(scrapy.Item):

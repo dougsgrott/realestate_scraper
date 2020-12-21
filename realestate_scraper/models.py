@@ -29,6 +29,7 @@ class ImoveisSCCatalog(Base):
     code = Column(String(20))
     local = Column(Integer)
     description = Column(String(200))
+    region = Column(String(50))
     url = Column(String(200))
     date = Column(DateTime)
     data_scraped = Column(Boolean)

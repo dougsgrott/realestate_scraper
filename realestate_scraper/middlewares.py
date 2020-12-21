@@ -8,6 +8,8 @@ from scrapy import signals
 # useful for handling different item types with a single interface
 from itemadapter import is_item, ItemAdapter
 
+import logging
+from scrapy import logformatter
 
 class RealestateScraperSpiderMiddleware:
     # Not all methods need to be defined. If a method is not defined,
@@ -101,3 +103,15 @@ class RealestateScraperDownloaderMiddleware:
 
     def spider_opened(self, spider):
         spider.logger.info('Spider opened: %s' % spider.name)
+
+
+class PoliteLogFormatter(logformatter.LogFormatter):
+    def dropped(self, item, exception, response, spider):
+        return {
+            'level': logging.DEBUG,
+            'msg': logformatter.DROPPEDMSG,
+            'args': {
+                'exception': exception,
+                'item': item,
+            }
+        }

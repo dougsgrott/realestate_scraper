@@ -15,6 +15,20 @@ import json
 from itemadapter import ItemAdapter
 
 from datetime import datetime
+import logging
+
+redundancy = 0
+saved = 0
+
+
+logger = logging.getLogger(__name__)  # Gets or creates a logger
+#logger.setLevel(logging.INFO)  # set log level
+# define file handler and set formatter
+#file_handler = logging.FileHandler('logfile.log')
+#formatter    = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+#file_handler.setFormatter(formatter)
+#logger.addHandler(file_handler)  # add file handler to logger
+
 
 class DuplicatesImoveisSCCatalogPipeline(object):
     def __init__(self):
@@ -25,12 +39,13 @@ class DuplicatesImoveisSCCatalogPipeline(object):
         engine = db_connect()
         create_table(engine)
         self.factory = sessionmaker(bind=engine)
-        #logging.info("****DuplicatesPipeline: database connected****")
 
     def process_item(self, item, spider):
         session = self.factory()
         exist_title = session.query(ImoveisSCCatalog).filter_by(title=item["title"]).first()
         if (exist_title is not None):
+            global redundancy
+            redundancy = redundancy + 1
             raise DropItem("Duplicate item found: {}".format(item["title"]))
             session.close()
         else:
@@ -59,6 +74,7 @@ class SaveImoveisSCCatalogPipeline(object):
         catalog.code = item["code"]
         catalog.local = item["local"]
         catalog.description = item["description"]
+        catalog.region = item["region"]
         catalog.url = item["url"]
         catalog.date = item["date"]
         catalog.data_scraped = False
@@ -67,6 +83,8 @@ class SaveImoveisSCCatalogPipeline(object):
             print('Entry added')
             session.add(catalog)
             session.commit()
+            global saved
+            saved = saved + 1
         except:
             print('rollback')
             session.rollback()
@@ -76,6 +94,34 @@ class SaveImoveisSCCatalogPipeline(object):
         
         return item
 
+
+class LoggerImoveisSCCatalogPipeline:
+    def close_spider(self, spider):
+        # logger = logging.getLogger(__name__)  # Gets or creates a logger
+        # logger.setLevel(logging.INFO)  # set log level
+        
+        # # define file handler and set formatter
+        # file_handler = logging.FileHandler('logfile.log')
+        # formatter    = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+        # file_handler.setFormatter(formatter)
+
+        # logger.addHandler(file_handler)  # add file handler to logger
+
+        # print("Logger...")
+        logger = logging.getLogger(__name__)  # Gets or creates a logger
+        logger.info("{} new items were added to the database.".format(saved))
+        logger.info("{} redundant items were ignored.".format(redundancy))
+        logger.info("Starting url - {}.".format(spider.start_urls))
+        # logger.info("Scraping started at - {}".format(spider.starting_time))
+        # logger.info("Scraping ended at - {}".format(spider.finishing_time))
+        # logger.info("Elapsed scraping time - {} .".format(spider.elapsed_time))
+        
+        # print("Opa!")
+        # print(spider.crawler.stats.get_stats())
+        # spider.logger.info("teste - from pipeline")
+        # print("{} new items were added to the database.".format(saved))
+        # print("{} redundant items were ignored.".format(redundancy))
+        
 
 class UpdateCatalogDatabasePipeline(object):
     def __init__(self):
@@ -105,6 +151,7 @@ class JsonWriterPipeline:
 
     def process_item(self, item, spider):
         line = json.dumps(ItemAdapter(item).asdict()) + "\n"
+        print("Data added to JSON")
         self.file.write(line)
         return item
 
