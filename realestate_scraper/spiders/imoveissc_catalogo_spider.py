@@ -14,8 +14,11 @@ import sys
 import time
 import random
 import logging
+import pprint
 #from scrapy.utils.log import configure_logging 
 #from scrapy import logformatter
+
+from scrapy.statscollectors import StatsCollector
 
 sys.path.append("/home/user/PythonProj/Scraping/realestate_scraper/realestate_scraper")
 from items import ImoveisSCCatalogItem
@@ -25,8 +28,8 @@ class ImoveisSCCatalogSpider(Spider):
     name = 'imoveis_sc_catalog'
     handle_httpstatus_list = [404]
     # start_urls = ['https://www.imoveis-sc.com.br/regiao-serra/']
-    # start_urls = ['https://www.imoveis-sc.com.br/sao-bento-do-sul/comprar/casa']
-    start_urls = ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa']  # LEVEL 1
+    start_urls = ['https://www.imoveis-sc.com.br/sao-bento-do-sul/comprar/casa']
+    # start_urls = ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa']  # LEVEL 1
     # start_urls = [
     #     'http://www.example.com/thisurlexists.html',
     #     'http://www.example.com/thisurldoesnotexist.html',
@@ -39,6 +42,13 @@ class ImoveisSCCatalogSpider(Spider):
     #     level=logging.WARNING
     # )
 
+    customLogger = logging.getLogger(__name__)
+    customLogger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler('logfile.txt')
+    formatter = logging.Formatter('[%(name)s] %(levelname)s: %(message)s')
+    file_handler.setFormatter(formatter)
+    customLogger.addHandler(file_handler)
+
     custom_settings = {
         'AUTOTHROTTLE_ENABLED': True,
         'AUTOTHROTTLE_DEBUG': True,
@@ -49,31 +59,31 @@ class ImoveisSCCatalogSpider(Spider):
             'realestate_scraper.pipelines.DuplicatesImoveisSCCatalogPipeline': 100,
             'realestate_scraper.pipelines.LoggerImoveisSCCatalogPipeline': 500,
         },
-        'LOG_FORMATTER': 'realestate_scraper.middlewares.PoliteLogFormatter',
-        'LOG_LEVEL': 'INFO',
-        'LOG_FORMAT': '[%(name)s] %(levelname)s: %(message)s',
-        'LOG_ENABLED': False,
-        'LOG_FILE': 'log.txt',
+        # 'LOG_FORMATTER': 'realestate_scraper.middlewares.PoliteLogFormatter',
+        # 'LOG_LEVEL': 'INFO',
+        # 'LOG_FORMAT': '[%(name)s] %(levelname)s: %(message)s',
+        # 'LOG_ENABLED': False,
+        # 'LOG_FILE': 'log.txt',
     }    
 
-    def __init__(self, *args, **kwargs):
+    # def __init__(self, *args, **kwargs):
+
         # logger = logging.getLogger(__name__)  # Gets or creates a logger
         # logger.info("================================")
-        logger = logging.getLogger('scrapy.middleware')
-        logger.setLevel(logging.WARNING)
-        logger = logging.getLogger('scrapy.extensions.telnet')
-        logger.setLevel(logging.WARNING)
-        logger = logging.getLogger('scrapy.extensions.logstats')
-        logger.setLevel(logging.WARNING)
-        logger = logging.getLogger('scrapy.extensions.throttle')
-        logger.setLevel(logging.WARNING)
-        logger = logging.getLogger('scrapy.core.engine')
-        logger.setLevel(logging.WARNING)
-
-        logger = logging.getLogger('scrapy.downloadermiddlewares.retry')
-        logger.setLevel(logging.CRITICAL)
-        logger = logging.getLogger('scrapy.core.scraper')
-        logger.setLevel(logging.CRITICAL)
+        # logger = logging.getLogger('scrapy.middleware')
+        # logger.setLevel(logging.WARNING)
+        # logger = logging.getLogger('scrapy.extensions.telnet')
+        # logger.setLevel(logging.WARNING)
+        # logger = logging.getLogger('scrapy.extensions.logstats')
+        # logger.setLevel(logging.WARNING)
+        # logger = logging.getLogger('scrapy.extensions.throttle')
+        # logger.setLevel(logging.WARNING)
+        # logger = logging.getLogger('scrapy.core.engine')
+        # logger.setLevel(logging.WARNING)
+        # logger = logging.getLogger('scrapy.downloadermiddlewares.retry')
+        # logger.setLevel(logging.CRITICAL)
+        # logger = logging.getLogger('scrapy.core.scraper')
+        # logger.setLevel(logging.CRITICAL)
         
         # super().__init__(*args, **kwargs)
         # self.failed_urls = []
@@ -81,20 +91,30 @@ class ImoveisSCCatalogSpider(Spider):
         # super(ImoveisSCCatalogSpider, self).__init__(*args, **kwargs)
         # self.start_urls = [kwargs.get('start_url')]
 
-    # @classmethod
-    # def from_crawler(cls, crawler, *args, **kwargs):
-    #     print("\nfrom_crawler\n")
-    #     spider = super(ImoveisSCCatalogSpider, cls).from_crawler(crawler, *args, **kwargs)
-    #     crawler.signals.connect(spider.handle_spider_closed, signals.spider_closed)
-    #     return spider
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        print("\nfrom_crawler\n")
+        spider = super(ImoveisSCCatalogSpider, cls).from_crawler(crawler, *args, **kwargs)
+        crawler.signals.connect(spider.handle_spider_closed, signals.spider_closed)
+        crawler.signals.connect(spider.handle_spider_opened, signals.spider_opened)
+        return spider
 
-    # def log_stats(self, stats):
-    #     self.logger.info('teste - from spider')
+    def handle_spider_opened(self):
+        self.customLogger.info("Spider Opened")
 
-    # def handle_spider_closed(self, reason):
-    #     print("\nhandle_spider_closed\n")
-    #     self.crawler.stats.set_value('failed_urls', ', '.join(self.failed_urls))
-    #     #i = 10
+    def log_stats(self, stats):
+        #self.customLogger.info("Scraping Stats:")
+        #self.customLogger.info(stats)
+        self.customLogger.info("Scraping Stats:\n" + pprint.pformat(stats))
+
+    def handle_spider_closed(self, reason):
+        print("\nhandle_spider_closed\n")
+        stats = self.crawler.stats.get_stats()
+        self.log_stats(stats)
+        self.customLogger.info("Spider Closed")
+        #print(self.crawler.stats.get_stats())
+        #self.crawler.stats.set_value('failed_urls', ', '.join(self.failed_urls))
+        #i = 10
 
     # def process_exception(self, response, exception, spider):
     #     print("\nprocess_exception\n")
