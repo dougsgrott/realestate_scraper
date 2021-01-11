@@ -58,7 +58,7 @@ class ImoveisSCSpider(Spider):
         rows_not_scraped = session.query(ImoveisSCCatalog).filter(ImoveisSCCatalog.data_scraped==False)
         urls_to_be_scraped = [row.url for row in rows_not_scraped]
         ids = [row.id for row in rows_not_scraped]
-
+        
         #for url in urls_to_be_scraped:
         for i in range(len(urls_to_be_scraped)):
             yield Request(url=urls_to_be_scraped[i], callback=self.parse, meta={"catalogo_id": ids[i]})

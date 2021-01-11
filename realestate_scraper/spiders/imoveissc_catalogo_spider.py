@@ -22,14 +22,16 @@ from scrapy.statscollectors import StatsCollector
 
 sys.path.append("/home/user/PythonProj/Scraping/realestate_scraper/realestate_scraper")
 from items import ImoveisSCCatalogItem
+# from pipelines import Foo
+import settings# import redundancy, redundancy_streak, saved
 
 
 class ImoveisSCCatalogSpider(Spider):
     name = 'imoveis_sc_catalog'
     handle_httpstatus_list = [404]
     # start_urls = ['https://www.imoveis-sc.com.br/regiao-serra/']
-    start_urls = ['https://www.imoveis-sc.com.br/sao-bento-do-sul/comprar/casa']
-    # start_urls = ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa']  # LEVEL 1
+    # start_urls = ['https://www.imoveis-sc.com.br/sao-bento-do-sul/comprar/casa']
+    start_urls = ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa']  # LEVEL 1
     # start_urls = [
     #     'http://www.example.com/thisurlexists.html',
     #     'http://www.example.com/thisurldoesnotexist.html',
@@ -136,6 +138,12 @@ class ImoveisSCCatalogSpider(Spider):
         i = 0
         for sel in response.xpath('//article[@class="imovel  "]'):
             yield self.populate_item(sel, response.url)
+
+        # global redundancy_streak
+        # print("REDUNDANCIAS: {}".format(Foo.getRedundancyStreak()))
+        print("REDUNDANCIAS2: {}".format(settings.redundancy_streak))
+        if (settings.redundancy_streak > 30):
+            self.close()
 
         time.sleep(random.randint(3,7))
         yield self.paginate(response)

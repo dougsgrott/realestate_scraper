@@ -5,11 +5,17 @@
 
 
 # useful for handling different item types with a single interface
+import scrapy
 from itemadapter import ItemAdapter
 
 from sqlalchemy.orm import sessionmaker
 from scrapy.exceptions import DropItem
-from realestate_scraper.models import ImoveisSCCatalog, create_table, db_connect
+
+import sys
+# sys.path.append("/home/user/PythonProj/Scraping/realestate_scraper/realestate_scraper")
+
+# from realestate_scraper.models import ImoveisSCCatalog, create_table, db_connect
+from models import ImoveisSCCatalog, create_table, db_connect
 
 import json
 from itemadapter import ItemAdapter
@@ -17,8 +23,11 @@ from itemadapter import ItemAdapter
 from datetime import datetime
 import logging
 
-redundancy = 0
-saved = 0
+# from settings import redundancy, redundancy_streak, saved
+import settings
+# redundancy = 0
+# redundancy_streak = 0
+# saved = 0
 
 
 logger = logging.getLogger(__name__)  # Gets or creates a logger
@@ -44,8 +53,9 @@ class DuplicatesImoveisSCCatalogPipeline(object):
         session = self.factory()
         exist_title = session.query(ImoveisSCCatalog).filter_by(title=item["title"]).first()
         if (exist_title is not None):
-            global redundancy
-            redundancy = redundancy + 1
+            # global redundancy, redundancy_streak
+            settings.redundancy = settings.redundancy + 1
+            settings.redundancy_streak = settings.redundancy_streak + 1
             raise DropItem("Duplicate item found: {}".format(item["title"]))
             session.close()
         else:
@@ -83,8 +93,10 @@ class SaveImoveisSCCatalogPipeline(object):
             print('Entry added')
             session.add(catalog)
             session.commit()
-            global saved
-            saved = saved + 1
+            # global saved, redundancy_streak
+            settings.saved = settings.saved + 1
+            print("AAAAAFFEEE")
+            settings.redundancy_streak = 0
         except:
             print('rollback')
             session.rollback()
@@ -109,8 +121,8 @@ class LoggerImoveisSCCatalogPipeline:
 
         # print("Logger...")
         logger = logging.getLogger(__name__)  # Gets or creates a logger
-        logger.info("{} new items were added to the database.".format(saved))
-        logger.info("{} redundant items were ignored.".format(redundancy))
+        logger.info("{} new items were added to the database.".format(settings.saved))
+        logger.info("{} redundant items were ignored.".format(settings.redundancy))
         logger.info("Starting url - {}.".format(spider.start_urls))
         # logger.info("Scraping started at - {}".format(spider.starting_time))
         # logger.info("Scraping ended at - {}".format(spider.finishing_time))

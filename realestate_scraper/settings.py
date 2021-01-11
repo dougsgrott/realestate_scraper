@@ -7,6 +7,10 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+redundancy = 0
+redundancy_streak = 0
+saved = 0
+
 BOT_NAME = 'realestate_scraper'
 
 SPIDER_MODULES = ['realestate_scraper.spiders']
