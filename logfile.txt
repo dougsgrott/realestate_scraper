@@ -745,3 +745,214 @@
  'spider_exceptions/TypeError': 1,
  'start_time': datetime.datetime(2021, 1, 11, 23, 50, 52, 625177)}
 [__main__] INFO: Spider Closed
+[__main__] INFO: Spider Opened
+[__main__] INFO: Spider closed due to 30 consecutive redundant entries.
+[realestate_scraper.pipelines] INFO: 0 new items were added to the database.
+[realestate_scraper.pipelines] INFO: 36 redundant items were ignored.
+[realestate_scraper.pipelines] INFO: Starting url - ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa'].
+[__main__] INFO: Scraping Stats:
+{'downloader/request_bytes': 1202,
+ 'downloader/request_count': 2,
+ 'downloader/request_method_count/GET': 2,
+ 'downloader/response_bytes': 50121,
+ 'downloader/response_count': 2,
+ 'downloader/response_status_count/200': 2,
+ 'elapsed_time_seconds': 8.11248,
+ 'finish_reason': 'finished',
+ 'finish_time': datetime.datetime(2021, 1, 14, 20, 17, 3, 771001),
+ 'item_dropped_count': 36,
+ 'item_dropped_reasons_count/DropItem': 36,
+ 'log_count/DEBUG': 2,
+ 'log_count/ERROR': 1,
+ 'log_count/INFO': 17,
+ 'log_count/WARNING': 36,
+ 'memusage/max': 77004800,
+ 'memusage/startup': 77004800,
+ 'request_depth_max': 1,
+ 'response_received_count': 2,
+ 'scheduler/dequeued': 2,
+ 'scheduler/dequeued/memory': 2,
+ 'scheduler/enqueued': 2,
+ 'scheduler/enqueued/memory': 2,
+ 'spider_exceptions/TypeError': 1,
+ 'start_time': datetime.datetime(2021, 1, 14, 20, 16, 55, 658521)}
+[__main__] INFO: Spider Closed
+[__main__] INFO: Spider Opened
+[realestate_scraper.pipelines] INFO: 0 new items were added to the database.
+[realestate_scraper.pipelines] INFO: 47 redundant items were ignored.
+[realestate_scraper.pipelines] INFO: Starting url - ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa'].
+[__main__] INFO: Scraping Stats:
+{'downloader/request_bytes': 2139,
+ 'downloader/request_count': 3,
+ 'downloader/request_method_count/GET': 3,
+ 'downloader/response_bytes': 67273,
+ 'downloader/response_count': 3,
+ 'downloader/response_status_count/200': 3,
+ 'elapsed_time_seconds': 20.595236,
+ 'finish_reason': 'finished',
+ 'finish_time': datetime.datetime(2021, 1, 14, 20, 27, 41, 510279),
+ 'item_dropped_count': 47,
+ 'item_dropped_reasons_count/DropItem': 47,
+ 'log_count/DEBUG': 3,
+ 'log_count/INFO': 17,
+ 'log_count/WARNING': 47,
+ 'memusage/max': 77295616,
+ 'memusage/startup': 77295616,
+ 'request_depth_max': 2,
+ 'response_received_count': 3,
+ 'scheduler/dequeued': 3,
+ 'scheduler/dequeued/memory': 3,
+ 'scheduler/enqueued': 3,
+ 'scheduler/enqueued/memory': 3,
+ 'start_time': datetime.datetime(2021, 1, 14, 20, 27, 20, 915043)}
+[__main__] INFO: Spider Closed. finished
+[__main__] INFO: Spider Opened
+[realestate_scraper.pipelines] INFO: 0 new items were added to the database.
+[realestate_scraper.pipelines] INFO: 47 redundant items were ignored.
+[realestate_scraper.pipelines] INFO: Starting url - ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa'].
+[__main__] INFO: Scraping Stats:
+{'downloader/request_bytes': 2135,
+ 'downloader/request_count': 3,
+ 'downloader/request_method_count/GET': 3,
+ 'downloader/response_bytes': 67270,
+ 'downloader/response_count': 3,
+ 'downloader/response_status_count/200': 3,
+ 'elapsed_time_seconds': 19.976152,
+ 'finish_reason': 'finished',
+ 'finish_time': datetime.datetime(2021, 1, 14, 20, 31, 14, 231109),
+ 'item_dropped_count': 47,
+ 'item_dropped_reasons_count/DropItem': 47,
+ 'log_count/DEBUG': 3,
+ 'log_count/INFO': 17,
+ 'log_count/WARNING': 47,
+ 'memusage/max': 77180928,
+ 'memusage/startup': 77180928,
+ 'request_depth_max': 2,
+ 'response_received_count': 3,
+ 'scheduler/dequeued': 3,
+ 'scheduler/dequeued/memory': 3,
+ 'scheduler/enqueued': 3,
+ 'scheduler/enqueued/memory': 3,
+ 'start_time': datetime.datetime(2021, 1, 14, 20, 30, 54, 254957)}
+[__main__] INFO: Spider Closed. finished
+[__main__] INFO: Spider Opened
+[realestate_scraper.pipelines] INFO: 0 new items were added to the database.
+[realestate_scraper.pipelines] INFO: 47 redundant items were ignored.
+[realestate_scraper.pipelines] INFO: Starting url - ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa'].
+[__main__] INFO: Scraping Stats:
+{'downloader/request_bytes': 2147,
+ 'downloader/request_count': 3,
+ 'downloader/request_method_count/GET': 3,
+ 'downloader/response_bytes': 67292,
+ 'downloader/response_count': 3,
+ 'downloader/response_status_count/200': 3,
+ 'elapsed_time_seconds': 19.433028,
+ 'finish_reason': 'finished',
+ 'finish_time': datetime.datetime(2021, 1, 14, 20, 36, 15, 161806),
+ 'item_dropped_count': 47,
+ 'item_dropped_reasons_count/DropItem': 47,
+ 'log_count/DEBUG': 3,
+ 'log_count/INFO': 17,
+ 'log_count/WARNING': 47,
+ 'memusage/max': 77074432,
+ 'memusage/startup': 77074432,
+ 'request_depth_max': 2,
+ 'response_received_count': 3,
+ 'scheduler/dequeued': 3,
+ 'scheduler/dequeued/memory': 3,
+ 'scheduler/enqueued': 3,
+ 'scheduler/enqueued/memory': 3,
+ 'start_time': datetime.datetime(2021, 1, 14, 20, 35, 55, 728778)}
+[__main__] INFO: Spider Closed. finished
+[__main__] INFO: Spider Opened
+[__main__] INFO: Spider Opened
+[realestate_scraper.pipelines] INFO: 0 new items were added to the database.
+[realestate_scraper.pipelines] INFO: 36 redundant items were ignored.
+[realestate_scraper.pipelines] INFO: Starting url - ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa'].
+[__main__] INFO: Scraping Stats:
+{'downloader/request_bytes': 1192,
+ 'downloader/request_count': 2,
+ 'downloader/request_method_count/GET': 2,
+ 'downloader/response_bytes': 50117,
+ 'downloader/response_count': 2,
+ 'downloader/response_status_count/200': 2,
+ 'elapsed_time_seconds': 25.594024,
+ 'finish_reason': 'finished',
+ 'finish_time': datetime.datetime(2021, 1, 14, 21, 10, 28, 151156),
+ 'item_dropped_count': 36,
+ 'item_dropped_reasons_count/DropItem': 36,
+ 'log_count/DEBUG': 2,
+ 'log_count/ERROR': 1,
+ 'log_count/INFO': 16,
+ 'log_count/WARNING': 36,
+ 'memusage/max': 76865536,
+ 'memusage/startup': 76865536,
+ 'request_depth_max': 1,
+ 'response_received_count': 2,
+ 'scheduler/dequeued': 2,
+ 'scheduler/dequeued/memory': 2,
+ 'scheduler/enqueued': 2,
+ 'scheduler/enqueued/memory': 2,
+ 'spider_exceptions/NameError': 1,
+ 'start_time': datetime.datetime(2021, 1, 14, 21, 10, 2, 557132)}
+[__main__] INFO: Spider Closed. finished
+[__main__] INFO: Spider Opened
+[realestate_scraper.pipelines] INFO: 0 new items were added to the database.
+[realestate_scraper.pipelines] INFO: 36 redundant items were ignored.
+[realestate_scraper.pipelines] INFO: Starting url - ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa'].
+[__main__] INFO: Scraping Stats:
+{'downloader/request_bytes': 1188,
+ 'downloader/request_count': 2,
+ 'downloader/request_method_count/GET': 2,
+ 'downloader/response_bytes': 50111,
+ 'downloader/response_count': 2,
+ 'downloader/response_status_count/200': 2,
+ 'elapsed_time_seconds': 18.691515,
+ 'finish_reason': 'finished',
+ 'finish_time': datetime.datetime(2021, 1, 14, 21, 14, 33, 624632),
+ 'item_dropped_count': 36,
+ 'item_dropped_reasons_count/DropItem': 36,
+ 'log_count/DEBUG': 2,
+ 'log_count/ERROR': 1,
+ 'log_count/INFO': 16,
+ 'log_count/WARNING': 36,
+ 'memusage/max': 76865536,
+ 'memusage/startup': 76865536,
+ 'request_depth_max': 1,
+ 'response_received_count': 2,
+ 'scheduler/dequeued': 2,
+ 'scheduler/dequeued/memory': 2,
+ 'scheduler/enqueued': 2,
+ 'scheduler/enqueued/memory': 2,
+ 'spider_exceptions/NameError': 1,
+ 'start_time': datetime.datetime(2021, 1, 14, 21, 14, 14, 933117)}
+[__main__] INFO: Spider Closed. finished
+[__main__] INFO: Spider Opened
+[realestate_scraper.pipelines] INFO: 0 new items were added to the database.
+[realestate_scraper.pipelines] INFO: 36 redundant items were ignored.
+[realestate_scraper.pipelines] INFO: Starting url - ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa'].
+[__main__] INFO: Scraping Stats:
+{'downloader/request_bytes': 1190,
+ 'downloader/request_count': 2,
+ 'downloader/request_method_count/GET': 2,
+ 'downloader/response_bytes': 50114,
+ 'downloader/response_count': 2,
+ 'downloader/response_status_count/200': 2,
+ 'elapsed_time_seconds': 15.855166,
+ 'finish_reason': 'Spider closed due to 30 consecutive redundant entries.',
+ 'finish_time': datetime.datetime(2021, 1, 14, 21, 15, 42, 732646),
+ 'item_dropped_count': 36,
+ 'item_dropped_reasons_count/DropItem': 36,
+ 'log_count/DEBUG': 2,
+ 'log_count/INFO': 16,
+ 'log_count/WARNING': 36,
+ 'memusage/max': 76931072,
+ 'memusage/startup': 76931072,
+ 'request_depth_max': 1,
+ 'response_received_count': 2,
+ 'scheduler/dequeued': 2,
+ 'scheduler/dequeued/memory': 2,
+ 'scheduler/enqueued': 2,
+ 'scheduler/enqueued/memory': 2,
+ 'start_time': datetime.datetime(2021, 1, 14, 21, 15, 26, 877480)}
+[__main__] INFO: Spider Closed. Spider closed due to 30 consecutive redundant entries.

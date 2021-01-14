@@ -1,6 +1,7 @@
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 
+from scrapy.exceptions import CloseSpider
 from scrapy.loader import ItemLoader
 from scrapy.loader.processors import MapCompose
 from scrapy.spiders import Spider, signals
@@ -29,6 +30,7 @@ import settings# import redundancy, redundancy_streak, saved
 class ImoveisSCCatalogSpider(Spider):
     name = 'imoveis_sc_catalog'
     handle_httpstatus_list = [404]
+    redundancy_threshold = 30
     # start_urls = ['https://www.imoveis-sc.com.br/regiao-serra/']
     # start_urls = ['https://www.imoveis-sc.com.br/sao-bento-do-sul/comprar/casa']
     start_urls = ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa']  # LEVEL 1
@@ -95,7 +97,6 @@ class ImoveisSCCatalogSpider(Spider):
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
-        print("\nfrom_crawler\n")
         spider = super(ImoveisSCCatalogSpider, cls).from_crawler(crawler, *args, **kwargs)
         crawler.signals.connect(spider.handle_spider_closed, signals.spider_closed)
         crawler.signals.connect(spider.handle_spider_opened, signals.spider_opened)
@@ -109,11 +110,11 @@ class ImoveisSCCatalogSpider(Spider):
         #self.customLogger.info(stats)
         self.customLogger.info("Scraping Stats:\n" + pprint.pformat(stats))
 
-    def handle_spider_closed(self, reason):
-        print("\nhandle_spider_closed\n")
+    def handle_spider_closed(self, reason=""):
+        print("Reason: {}".format(reason))
         stats = self.crawler.stats.get_stats()
         self.log_stats(stats)
-        self.customLogger.info("Spider Closed")
+        self.customLogger.info("Spider Closed. {}".format(reason))
         #print(self.crawler.stats.get_stats())
         #self.crawler.stats.set_value('failed_urls', ', '.join(self.failed_urls))
         #i = 10
@@ -139,11 +140,12 @@ class ImoveisSCCatalogSpider(Spider):
         for sel in response.xpath('//article[@class="imovel  "]'):
             yield self.populate_item(sel, response.url)
 
-        # global redundancy_streak
-        # print("REDUNDANCIAS: {}".format(Foo.getRedundancyStreak()))
-        print("REDUNDANCIAS2: {}".format(settings.redundancy_streak))
-        if (settings.redundancy_streak > 30):
-            self.close()
+        print(self.redundancy_threshold)
+        print(settings.redundancy_streak)
+        if (settings.redundancy_streak > self.redundancy_threshold):
+            reason = "Reason: more than {} consecutive redundant entries.".format(self.redundancy_threshold)
+            # self.close(self, reason=reason)
+            raise CloseSpider(reason=reason)
 
         time.sleep(random.randint(3,7))
         yield self.paginate(response)

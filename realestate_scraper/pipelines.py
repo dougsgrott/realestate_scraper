@@ -95,7 +95,6 @@ class SaveImoveisSCCatalogPipeline(object):
             session.commit()
             # global saved, redundancy_streak
             settings.saved = settings.saved + 1
-            print("AAAAAFFEEE")
             settings.redundancy_streak = 0
         except:
             print('rollback')
