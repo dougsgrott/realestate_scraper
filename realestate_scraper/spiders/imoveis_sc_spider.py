@@ -31,7 +31,7 @@ import sys
 
 #from realestate_scraper.models import ImoveisSCCatalog, create_table, db_connect
 
-sys.path.append("/home/user/PythonProj/Scraping/realestate_scraper/realestate_scraper")
+sys.path.append("/home/user/PythonProj/realestate_scraper/realestate_scraper")
 from items import ImoveisSCItem
 from models import ImoveisSCCatalog, create_table, db_connect
 from sqlalchemy.orm import sessionmaker

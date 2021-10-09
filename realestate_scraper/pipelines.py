@@ -85,9 +85,9 @@ class SaveImoveisSCCatalogPipeline(object):
         catalog.local = item["local"]
         catalog.description = item["description"]
         catalog.region = item["region"]
+        catalog.scraped_date = item["scraped_date"]
         catalog.url = item["url"]
-        catalog.date = item["date"]
-        catalog.data_scraped = False
+        catalog.url_scraped = False
 
         try:
             print('Entry added')

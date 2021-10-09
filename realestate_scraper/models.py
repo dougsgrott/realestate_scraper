@@ -30,9 +30,9 @@ class ImoveisSCCatalog(Base):
     local = Column(Integer)
     description = Column(String(200))
     region = Column(String(50))
+    scraped_date = Column(DateTime)
     url = Column(String(200))
-    date = Column(DateTime)
-    data_scraped = Column(Boolean)
+    url_scraped = Column(Boolean)
 
 
     # def __init__(self, title, code, local, description, url, date_scraped):

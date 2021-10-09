@@ -10,7 +10,6 @@ from w3lib.html import remove_tags
 
 from itemloaders.processors import TakeFirst
 from datetime import datetime
-import sys
 
 import time
 import random
@@ -21,7 +20,8 @@ import pprint
 
 from scrapy.statscollectors import StatsCollector
 
-sys.path.append("/home/user/PythonProj/Scraping/realestate_scraper/realestate_scraper")
+import sys
+sys.path.append("/home/user/PythonProj/realestate_scraper/realestate_scraper")
 from items import ImoveisSCCatalogItem
 # from pipelines import Foo
 import settings# import redundancy, redundancy_streak, saved
@@ -33,7 +33,7 @@ class ImoveisSCCatalogSpider(Spider):
     redundancy_threshold = 30
     # start_urls = ['https://www.imoveis-sc.com.br/regiao-serra/']
     # start_urls = ['https://www.imoveis-sc.com.br/sao-bento-do-sul/comprar/casa']
-    start_urls = ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa']  # LEVEL 1
+    start_urls = ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa?ordenacao=recentes&page=1']  # LEVEL 1
     # start_urls = [
     #     'http://www.example.com/thisurlexists.html',
     #     'http://www.example.com/thisurldoesnotexist.html',
@@ -159,10 +159,11 @@ class ImoveisSCCatalogSpider(Spider):
         item_loader.add_xpath('local', './/div[@class="imovel-extra"]/strong/text()')
         item_loader.add_xpath('description', './/p[@class="imovel-descricao"]/text()')
         item_loader.add_value('region', url)
+        item_loader.add_value('scraped_date', datetime.now()) #.isoformat(' ')
         item_loader.add_xpath('url', './/a[contains(@class, "btn-visualizar")]/@href')
-        item_loader.add_value('date', datetime.now()) #.isoformat(' ')
-        foo = item_loader.load_item()
-        return item_loader.load_item()
+        # item_loader.add_value('url_scraped', False)
+        loaded_item = item_loader.load_item()
+        return loaded_item
     
 
     # 3. PAGINATION LEVEL 1
