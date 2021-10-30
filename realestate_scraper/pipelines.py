@@ -359,22 +359,22 @@ class DuplicatesImoveisSCCatalogPipeline(object):
             return item
 
 
-class DuplicatesImoveisSCStatusPipeline(object):
-    def __init__(self):
-        engine = db_connect()
-        create_table(engine)
-        self.factory = sessionmaker(bind=engine)
+# class DuplicatesImoveisSCStatusPipeline(object):
+#     def __init__(self):
+#         engine = db_connect()
+#         create_table(engine)
+#         self.factory = sessionmaker(bind=engine)
 
-    def process_item(self, item, spider):
-        if (item.get("type") != "status"):
-            return item
-            # raise DropItem()
-        session = self.factory()
-        exist_title = session.query(ImoveisSCCatalog).filter_by(title=item["title"]).first()
-        if (exist_title is not None):
-            raise DropItem("Duplicate item found: {}".format(item["title"]))
-        else:
-            return item
+#     def process_item(self, item, spider):
+#         if (item.get("type") != "status"):
+#             return item
+#             # raise DropItem()
+#         session = self.factory()
+#         exist_title = session.query(ImoveisSCCatalog).filter_by(title=item["title"]).first()
+#         if (exist_title is not None):
+#             raise DropItem("Duplicate item found: {}".format(item["title"]))
+#         else:
+#             return item
 
 
 class SaveImoveisSCCatalogPipeline(object):
@@ -404,7 +404,7 @@ class SaveImoveisSCCatalogPipeline(object):
         catalog.region = item["region"]
         catalog.scraped_date = item["scraped_date"]
         catalog.url = item["url"]
-        catalog.url_scraped = False
+        catalog.url_is_scraped = item["url_is_scraped"]
 
         try:
             print('Entry added')
@@ -423,35 +423,35 @@ class SaveImoveisSCCatalogPipeline(object):
         return item
 
 
-class SaveImoveisSCStatusPipeline(object):
-    def __init__(self):
-        engine = db_connect()
-        create_table(engine)
-        self.factory = sessionmaker(bind=engine)
+# class SaveImoveisSCStatusPipeline(object):
+#     def __init__(self):
+#         engine = db_connect()
+#         create_table(engine)
+#         self.factory = sessionmaker(bind=engine)
 
-    def process_item(self, item, spider):
-        if (item.get("type") != "status"):
-            return item
-            # raise DropItem()
-        session = self.factory()
-        catalog = ImoveisSCStatus()
-        catalog.title = item["title"]
-        catalog.code = item["code"]
-        catalog.url = item["url"]
-        catalog.is_scraped = item["is_scraped"]
-        catalog.scraped_date = item["scraped_date"]
-        try:
-            print('Entry added')
-            session.add(catalog)
-            session.commit()
-        except:
-            print('rollback')
-            session.rollback()
-            raise
-        finally:
-            session.close()
+#     def process_item(self, item, spider):
+#         if (item.get("type") != "status"):
+#             return item
+#             # raise DropItem()
+#         session = self.factory()
+#         catalog = ImoveisSCStatus()
+#         catalog.title = item["title"]
+#         catalog.code = item["code"]
+#         catalog.url = item["url"]
+#         catalog.is_scraped = item["is_scraped"]
+#         catalog.scraped_date = item["scraped_date"]
+#         try:
+#             print('Entry added')
+#             session.add(catalog)
+#             session.commit()
+#         except:
+#             print('rollback')
+#             session.rollback()
+#             raise
+#         finally:
+#             session.close()
         
-        return item
+#         return item
 
 
 class LoggerImoveisSCCatalogPipeline:
@@ -490,11 +490,12 @@ class UpdateCatalogDatabasePipeline(object):
 
     def process_item(self, item, spider):
         session = self.factory()
-        catalog = ImoveisSCCatalog()
-        catalog.title = item["title"]
+        # catalog = ImoveisSCCatalog()
+        # catalog.title = item["title"]
 
         scraped_row = session.query(ImoveisSCCatalog).filter_by(url=item["url"]).first()
-        scraped_row.data_scraped = True
+        scraped_row.url_is_scraped = 1
+        scraped_row.url_scraped_date = datetime.now()
 
         session.commit()
         session.close()
