@@ -22,7 +22,7 @@ def create_table(engine):
 
 
 class ImoveisSCCatalog(Base):
-    __tablename__ = "imoveis_sc"
+    __tablename__ = "imoveis_sc_catalog"
 
     id = Column(Integer, primary_key=True)
     title = Column(String(200))
@@ -32,47 +32,39 @@ class ImoveisSCCatalog(Base):
     region = Column(String(50))
     scraped_date = Column(DateTime)
     url = Column(String(200))
-    url_scraped = Column(Boolean)
+    url_is_scraped = Column(Integer)
+    url_scraped_date = Column(DateTime)
 
 
-    # def __init__(self, title, code, local, description, url, date_scraped):
-    #     self.title = title
-    #     self.code = code
-    #     self.local = local
-    #     self.description = description
-    #     self.url = url
-    #     self.date_scraped = date_scraped
+# class ImoveisSCStatus(Base):
+#     __tablename__ = "imoveis_sc_status"
+
+#     id = Column(Integer, primary_key=True)
+#     title = Column(String(200))
+#     code = Column(String(20))
+#     url = Column(String(200))
+#     is_scraped = Column(Integer)
+#     scraped_date = Column(DateTime)
 
 
-# engine = db_connect()
-# create_table(engine)
-# factory = sessionmaker(bind=engine)
-# session = factory()
-# #new_imovel = ImoveisSCCatalog('titulo1', 'code1', 'jlle', 'foo', 'www', datetime.now())
+# class ImoveisSCProperty(Base):
+#     __tablename__ = "imoveis_sc_property"
 
-# new_imovel = ImoveisSCCatalog()
-# new_imovel.title = 'titulo1'
-# new_imovel.code = 'code1'
-# new_imovel.local = 'jlle'
-# new_imovel.description = 'foo'
-# new_imovel.url = 'www'
-# new_imovel.date_scraped = datetime.now()
-
-# exist_title = session.query(ImoveisSCCatalog).filter_by(title=new_imovel.title).first()
-# #exist_code = session.query(ImoveisSCCatalog).filter_by(code=new_imovel.code).first()
-
-# if (exist_title is None):
-#     try:
-#         print('entry added')
-#         session.add(new_imovel)
-#         session.commit()
-#     except:
-#         print('rollback')
-#         session.rollback()
-#     finally:
-#         session.close()
-# else:
-#     print('entry is already in db')
-
-
-# print("EOL")
+#     id = Column(Integer, primary_key=True)
+#     title = Column(String(200))
+#     code = Column(String(20))
+#     price = Column(Integer)
+#     caracteristicas_simples = Column(String(50))
+#     description = Column(String(2500))
+#     caracteristicas_detalhes = Column(String(150))
+#     address = Column(String(50))
+#     advertiser = Column(String(50))
+#     advertiser_info = Column(String(50))
+#     local = Column(String(50))
+#     business_type = Column(String(50))
+#     property_type = Column(String(50))
+#     local = Column(Integer)
+#     description = Column(String(200))
+#     region = Column(String(50))
+#     scraped_date = Column(DateTime)
+#     url = Column(String(200))
