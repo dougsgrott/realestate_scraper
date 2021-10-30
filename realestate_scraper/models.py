@@ -1,18 +1,14 @@
-from sqlalchemy import create_engine, Column, Table, ForeignKey, MetaData
+from sqlalchemy import create_engine, Column
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Integer, String, Date, DateTime, Float, Boolean, Text, JSON
+from sqlalchemy import Integer, String, DateTime
 from scrapy.utils.project import get_project_settings
-
-from sqlalchemy.orm import sessionmaker
-
-from datetime import datetime
 
 Base = declarative_base()
 
 def db_connect():
     """
-    ####Performs database connection using database settings from settings.py.
-    ####Returns sqlaclchemy engine instance.
+    Performs database connection using database settings from settings.py.
+    Returns sqlaclchemy engine instance.
     """
     url = get_project_settings().get("CONNECTION_STRING")
     return create_engine(url)
@@ -34,37 +30,3 @@ class ImoveisSCCatalog(Base):
     url = Column(String(200))
     url_is_scraped = Column(Integer)
     url_scraped_date = Column(DateTime)
-
-
-# class ImoveisSCStatus(Base):
-#     __tablename__ = "imoveis_sc_status"
-
-#     id = Column(Integer, primary_key=True)
-#     title = Column(String(200))
-#     code = Column(String(20))
-#     url = Column(String(200))
-#     is_scraped = Column(Integer)
-#     scraped_date = Column(DateTime)
-
-
-# class ImoveisSCProperty(Base):
-#     __tablename__ = "imoveis_sc_property"
-
-#     id = Column(Integer, primary_key=True)
-#     title = Column(String(200))
-#     code = Column(String(20))
-#     price = Column(Integer)
-#     caracteristicas_simples = Column(String(50))
-#     description = Column(String(2500))
-#     caracteristicas_detalhes = Column(String(150))
-#     address = Column(String(50))
-#     advertiser = Column(String(50))
-#     advertiser_info = Column(String(50))
-#     local = Column(String(50))
-#     business_type = Column(String(50))
-#     property_type = Column(String(50))
-#     local = Column(Integer)
-#     description = Column(String(200))
-#     region = Column(String(50))
-#     scraped_date = Column(DateTime)
-#     url = Column(String(200))
