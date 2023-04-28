@@ -8,14 +8,14 @@
 import scrapy
 from itemadapter import ItemAdapter
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from scrapy.exceptions import DropItem
 
 import sys
 # sys.path.append("/home/user/PythonProj/Scraping/realestate_scraper/realestate_scraper")
 
 # from realestate_scraper.models import ImoveisSCCatalog, create_table, db_connect
-from models import ImoveisSCCatalog, create_table, db_connect
+from models import ImoveisSCCatalog, VivaRealCatalog, create_table, db_connect
 
 import json
 from itemadapter import ItemAdapter
@@ -26,7 +26,7 @@ import logging
 import six
 from pymongo import errors
 from pymongo.mongo_client import MongoClient
-from pymongo.mongo_replica_set_client import MongoReplicaSetClient
+# from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.read_preferences import ReadPreference
 
 from scrapy.exporters import BaseItemExporter
@@ -377,6 +377,36 @@ class DuplicatesImoveisSCCatalogPipeline(object):
 #             return item
 
 
+class SaveVivaRealCatalogPipeline(object):
+    def __init__(self):
+        """
+        Initializes database connection and sessionmaker
+        Creates tables
+        """
+        self.engine = db_connect()
+        VivaRealCatalog.metadata.create_all(self.engine)
+
+    def process_item(self, item, spider):
+        """
+        Save real estate index in the database
+        This method is called for every item pipeline component
+        """
+        with Session(self.engine) as session:
+            catalog = VivaRealCatalog()
+
+            fields = item.fields.keys()
+            for field in fields:
+                setattr(catalog, field, item[field])
+
+            print('Entry added')
+            session.add(catalog)
+            session.commit()
+            settings.saved = settings.saved + 1
+            settings.redundancy_streak = 0
+        
+        return item
+
+
 class SaveImoveisSCCatalogPipeline(object):
     def __init__(self):
         """
@@ -455,6 +485,34 @@ class SaveImoveisSCCatalogPipeline(object):
 
 
 class LoggerImoveisSCCatalogPipeline:
+    def close_spider(self, spider):
+        # logger = logging.getLogger(__name__)  # Gets or creates a logger
+        # logger.setLevel(logging.INFO)  # set log level
+        
+        # # define file handler and set formatter
+        # file_handler = logging.FileHandler('logfile.log')
+        # formatter    = logging.Formatter('%(asctime)s : %(levelname)s : %(name)s : %(message)s')
+        # file_handler.setFormatter(formatter)
+
+        # logger.addHandler(file_handler)  # add file handler to logger
+
+        # print("Logger...")
+        logger = logging.getLogger(__name__)  # Gets or creates a logger
+        logger.info("{} new items were added to the database.".format(settings.saved))
+        logger.info("{} redundant items were ignored.".format(settings.redundancy))
+        logger.info("Starting url - {}.".format(spider.start_urls))
+        # logger.info("Scraping started at - {}".format(spider.starting_time))
+        # logger.info("Scraping ended at - {}".format(spider.finishing_time))
+        # logger.info("Elapsed scraping time - {} .".format(spider.elapsed_time))
+        
+        # print("Opa!")
+        # print(spider.crawler.stats.get_stats())
+        # spider.logger.info("teste - from pipeline")
+        # print("{} new items were added to the database.".format(saved))
+        # print("{} redundant items were ignored.".format(redundancy))
+
+
+class LoggerVivaRealCatalogPipeline:
     def close_spider(self, spider):
         # logger = logging.getLogger(__name__)  # Gets or creates a logger
         # logger.setLevel(logging.INFO)  # set log level

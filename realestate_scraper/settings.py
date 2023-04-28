@@ -71,7 +71,8 @@ ROBOTSTXT_OBEY = True
 #    'realestate_scraper.pipelines.DuplicatesImoveisSCCatalogPipeline': 100,
 # }
 
-CONNECTION_STRING = 'sqlite:////home/user/PythonProj/realestate_scraper/imoveis_sc_catalog.db'
+# CONNECTION_STRING = 'sqlite:////home/user/PythonProj/realestate_scraper/imoveis_sc_catalog.db'
+CONNECTION_STRING = 'sqlite:///vivareal_catalog.db'
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html

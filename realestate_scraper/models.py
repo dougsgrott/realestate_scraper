@@ -1,9 +1,12 @@
-from sqlalchemy import create_engine, Column
-from sqlalchemy.ext.declarative import declarative_base
+from typing import Optional
+from sqlalchemy import create_engine, Column, String
+# from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Integer, String, DateTime
+from sqlalchemy.orm import sessionmaker, declarative_base, Mapped, mapped_column, DeclarativeBase, Session
 from scrapy.utils.project import get_project_settings
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 def db_connect():
     """
@@ -30,3 +33,38 @@ class ImoveisSCCatalog(Base):
     url = Column(String(200))
     url_is_scraped = Column(Integer)
     url_scraped_date = Column(DateTime)
+
+
+class VivaRealCatalog(Base):
+    __tablename__ = "vivareal_catalog"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    type: Mapped[str] = mapped_column(String(20))
+    address: Mapped[str] = mapped_column(String(200))
+    title: Mapped[str] = mapped_column(String(200)) # Mapped[Optional[str]]
+    details: Mapped[str] = mapped_column(String(200))
+    amenities: Mapped[Optional[str]] = mapped_column(String(200))
+    values: Mapped[str] = mapped_column(String(200))
+    target_url: Mapped[str] = mapped_column(String(200))
+    # catalog_scraped_date: Mapped[DateTime] = mapped_column(DateTime)
+    catalog_scraped_date: Mapped[str] = mapped_column(String(25))
+    is_target_scraped: Mapped[int] = mapped_column(Integer)
+
+
+if __name__ == "__main__":
+    engine = db_connect()
+    VivaRealCatalog.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        catalog_a = VivaRealCatalog(
+            type="Apartamento",
+        )
+        catalog_b = VivaRealCatalog(
+            type="Casa",
+        )
+        catalog_c = VivaRealCatalog(
+            type="Loft",
+        )
+
+        session.add_all([catalog_a, catalog_b, catalog_c])
+        session.commit()

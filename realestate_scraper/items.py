@@ -7,6 +7,7 @@ import scrapy
 from itemloaders.processors import Compose, TakeFirst, Join, MapCompose
 import re
 from w3lib.html import remove_tags
+from bs4 import BeautifulSoup
 
 def cleanText(text):
     processed_text = []
@@ -54,6 +55,57 @@ def dropDuplicate(collected_data):
 def getCidade(collected_data):
     cidade = collected_data[0].split(',')[-1].lstrip()
     return cidade
+
+
+def parse_details(selector_list):
+    text_list = []
+    for html_string in selector_list:
+        soup = BeautifulSoup(html_string, 'html.parser')
+        text = soup.get_text()
+        text_list.append(text)
+    concat_text = '<br>'.join(text_list)
+    return concat_text
+
+
+def parse_amenities(html_string):
+    if html_string == []:
+        return 'none'
+    try:
+        soup = BeautifulSoup(html_string[0], 'html.parser')
+        text = soup.get_text()
+    except:
+        text = 'error'
+    return text
+
+
+def parse_values(html_string):
+    if html_string == []:
+        return 'none'
+    try:
+        soup = BeautifulSoup(html_string[0], 'html.parser')
+        text = soup.get_text()
+    except:
+        text = 'error'
+    return text
+
+
+def parse_target_url(url_list):
+    url = url_list[0]
+    if url.startswith('/'):
+        url = 'https://www.vivareal.com.br' + url
+    return url
+
+
+class VivaRealCatalogItem(scrapy.Item):
+    type = scrapy.Field()
+    address = scrapy.Field()
+    title = scrapy.Field()
+    details = scrapy.Field(input_processor=parse_details)
+    amenities = scrapy.Field(input_processor=parse_amenities) #input_processor=cleanText
+    values = scrapy.Field(input_processor=parse_values) #input_processor=MapCompose(getLocal)
+    target_url = scrapy.Field(input_processor=parse_target_url)
+    catalog_scraped_date = scrapy.Field()
+    is_target_scraped = scrapy.Field()
 
 
 class ImoveisSCPropertyItem(scrapy.Item):
