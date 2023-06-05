@@ -10,29 +10,33 @@ class FooException(Exception):
     pass
 
 
+# #################################################
+#                    Scraper
+# #################################################
+
 class ScraperVivaReal(object):
     def __init__(self, page, writer=None):
         self.page = page
         self.writer = writer
-
+        self.batch_items = []
     # def scrape(): pass
 
     def scrape_page(self):
         """
         Parses the page and yields the scraped data.
         """
-        item_list = []
+        page_items = []
 
         results_list = self.page.locator('//*[contains(@class, "results-list")]/div')
         for result in results_list.element_handles():
             item = self.populate_item(result)
-            item_list.append(item)
+            page_items.append(item)
 
         if self.writer != None:
-            # try:
-            self.writer.write(item_list)
-            # except:
-            #     raise Exception("Write exception")
+            if self.writer.write_in_batches == False:
+                self.writer.write(page_items)
+            else:
+                self.batch_items += page_items
 
 
     def populate_item(self, result):
@@ -68,61 +72,100 @@ class ScraperVivaReal(object):
             locator.click()
             time.sleep(3)
         else:
+            if self.writer != None:
+                if self.writer.write_in_batches == True:
+                    self.writer.write(self.batch_items)
+
             raise FooException("No more pages to scrape")
 
 
 
-class ItemWriter(object):
+
+# #################################################
+#                Writers and Loaders
+# #################################################
+
+class DataWriter(object):
     def __init__(self):
         pass
 
 
-class JsonLineWriter(ItemWriter):
+class DataLoader(object):
     def __init__(self):
         pass
 
 
-class CsvWriter(ItemWriter):
-    def __init__(self, file_path, file_name, write_in_batches=False):
+class JsonLineWriter(DataWriter):
+    def __init__(self):
+        pass
+
+
+class CsvReader(DataLoader):
+    def __init__(self, file_path, file_name):
         self.file_path = file_path
         self.file_name = file_name
-        self.write_in_batches = write_in_batches
 
-    def load_data_foo(self):
+    def load_data(self):
+        data = pd.DataFrame()
         if os.path.exists(os.path.join(self.file_path, self.file_name)):
             data = pd.read_csv(os.path.join(self.file_path, self.file_name), index_col=0)
-        else:
-            data = pd.DataFrame()
+            
         return data
 
-    def _write(self, item: dict):
-        pass
-        # Load the dataframe using file_path
+
+class CsvWriter(DataWriter):
+    def __init__(self, file_path, write_in_batches=False, append=True): # , file_path, file_name
+        self.file_path = file_path
+        # self.file_name = file_name
+        self.write_in_batches = write_in_batches
+        self.append = append
+
+    # def load_data_foo(self):
+    #     if os.path.exists(os.path.join(self.file_path, self.file_name)):
+    #         data = pd.read_csv(os.path.join(self.file_path, self.file_name), index_col=0)
+    #     else:
+    #         data = pd.DataFrame()
+    #     return data
+
+    def _write(self, data: pd.DataFrame):
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        file_name = f"vivareal_{timestamp}.csv"
+        data.to_csv(os.path.join(self.file_path, file_name))
+
+        ####### Load the dataframe using file_path
         # Transforms item in a dataframe
         # Concatenates both dataframes
         # Saves the concatenated dataframe
 
-    def batch_write(self, items: list):
-        data = self.load_data_foo()
+    # def batch_write(self, items: list):
+    #     data = self.load_data_foo()
+    #     new_entries = pd.DataFrame.from_dict(data=items, orient='columns')
+    #     concat_data = pd.concat([data, new_entries], axis=0)
+    #     concat_data.to_csv(os.path.join(self.file_path, self.file_name))
+
+    def write(self, items: dict): #, loader: DataLoader
+        # data = self.load_data_foo()
         new_entries = pd.DataFrame.from_dict(data=items, orient='columns')
-        concat_data = pd.concat([data, new_entries], axis=0)
-        concat_data.to_csv(os.path.join(self.file_path, self.file_name))
+        # concat_data = pd.concat([data, new_entries], axis=0)
 
-    def write(self, items: dict):
-        if self.write_in_batches:
-            self.batch_write(items)
-        else:
-            for item in items:
-                self._write(item)
+        self._write(new_entries)
+
+        # if self.write_in_batches:
+        #     self.batch_write(items)
+        # else:
+        #     for item in items:
+        #         self._write(item)
 
 
-class SqliteWriter(ItemWriter):
+class SqliteWriter(DataWriter):
     def __init__(self):
         pass
 
 
 
-
+# #################################################
+#                     Main
+# #################################################
 
 if __name__ == "__main__":
     LOGGER = logging.getLogger(__name__)
@@ -130,22 +173,27 @@ if __name__ == "__main__":
     with sync_playwright() as p:
         navigator = p.chromium.launch(headless=False)
         page = navigator.new_page()
-        page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial")
+        # page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial")
+        page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/apartamento_residencial/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,,,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20de%20Itaparica,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20de%20Itaparica,,,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial")
+        
         
         file_path = '/media/user/Novo volume/Python/Secondary/realestate_scraper/data'
         file_name = 'foo.csv'
-        writer = CsvWriter(file_path, file_name, True)
+        writer = CsvWriter(
+            file_path=file_path,
+            write_in_batches=True,
+        )
 
         scraper = ScraperVivaReal(page=page, writer=writer)
         time.sleep(3)
 
-        scraper.scrape_page()
+        # scraper.scrape_page()
 
-        # try:
-        #     while True:
-        #         scraper.scrape_page()
-        #         scraper.next_page()
-        # except FooException:
-        #     foo = 42
+        try:
+            while True:
+                scraper.scrape_page()
+                scraper.next_page()
+        except FooException:
+            foo = 42
 
         foo = 42
