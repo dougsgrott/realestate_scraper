@@ -5,6 +5,8 @@ import logging
 from bs4 import BeautifulSoup
 import pandas as pd
 import os
+import csv
+import numpy as np
 
 class FooException(Exception):
     pass
@@ -114,47 +116,19 @@ class CsvReader(DataLoader):
 
 
 class CsvWriter(DataWriter):
-    def __init__(self, file_path, write_in_batches=False, append=True): # , file_path, file_name
+    def __init__(self, file_path, write_in_batches=False, append=True):
         self.file_path = file_path
-        # self.file_name = file_name
         self.write_in_batches = write_in_batches
         self.append = append
-
-    # def load_data_foo(self):
-    #     if os.path.exists(os.path.join(self.file_path, self.file_name)):
-    #         data = pd.read_csv(os.path.join(self.file_path, self.file_name), index_col=0)
-    #     else:
-    #         data = pd.DataFrame()
-    #     return data
 
     def _write(self, data: pd.DataFrame):
         timestamp = time.strftime("%Y%m%d-%H%M%S")
         file_name = f"vivareal_{timestamp}.csv"
         data.to_csv(os.path.join(self.file_path, file_name))
 
-        ####### Load the dataframe using file_path
-        # Transforms item in a dataframe
-        # Concatenates both dataframes
-        # Saves the concatenated dataframe
-
-    # def batch_write(self, items: list):
-    #     data = self.load_data_foo()
-    #     new_entries = pd.DataFrame.from_dict(data=items, orient='columns')
-    #     concat_data = pd.concat([data, new_entries], axis=0)
-    #     concat_data.to_csv(os.path.join(self.file_path, self.file_name))
-
-    def write(self, items: dict): #, loader: DataLoader
-        # data = self.load_data_foo()
+    def write(self, items: dict):
         new_entries = pd.DataFrame.from_dict(data=items, orient='columns')
-        # concat_data = pd.concat([data, new_entries], axis=0)
-
         self._write(new_entries)
-
-        # if self.write_in_batches:
-        #     self.batch_write(items)
-        # else:
-        #     for item in items:
-        #         self._write(item)
 
 
 class SqliteWriter(DataWriter):
@@ -162,10 +136,52 @@ class SqliteWriter(DataWriter):
         pass
 
 
+class DataAppender(object):
+    def __init__(self):
+        pass
+
+
+class CsvAppender(DataAppender):
+    def __init__(self, reader, write_in_batches=False, avoid_duplicates=False, duplicate_columns=[], mode='a'):
+        self.reader = reader
+        self.write_in_batches = write_in_batches
+        self.mode = mode
+        self.avoid_duplicates = avoid_duplicates
+        self.duplicate_columns = duplicate_columns
+
+    def load_data(self):
+        data = self.reader.load_data()
+        return data
+
+    def _write(self, data: pd.DataFrame):
+        complete_filepath = os.path.join(self.reader.file_path, self.reader.file_name)
+        header = not os.path.exists(complete_filepath)
+        data.to_csv(complete_filepath, mode=self.mode, header=header)
+
+    def filter_duplicates(self, data, new_entries):
+        if data.empty:
+            return new_entries
+        columns = self.duplicate_columns
+        if self.duplicate_columns == []:
+            columns = data.columns
+        bool_mask = np.any([~new_entries[col].isin(data[col]) for col in columns], axis=0)
+        new_entries = new_entries[bool_mask]
+        return new_entries
+
+    def write(self, items: list):
+        new_entries = pd.DataFrame.from_dict(data=items, orient='columns')
+        data = self.load_data()
+        if self.avoid_duplicates:
+            new_entries = self.filter_duplicates(data, new_entries)
+        self._write(new_entries)
+
+
+
 
 # #################################################
 #                     Main
 # #################################################
+
 
 if __name__ == "__main__":
     LOGGER = logging.getLogger(__name__)
@@ -179,9 +195,17 @@ if __name__ == "__main__":
         
         file_path = '/media/user/Novo volume/Python/Secondary/realestate_scraper/data'
         file_name = 'foo.csv'
-        writer = CsvWriter(
-            file_path=file_path,
-            write_in_batches=True,
+
+        # writer = CsvWriter(
+        #     file_path=file_path,
+        #     write_in_batches=False,
+        # )
+
+        writer = CsvAppender(
+            reader=CsvReader(file_path=file_path, file_name=file_name),
+            avoid_duplicates=True,
+            # duplicate_columns=['link'],
+            # mode='a'
         )
 
         scraper = ScraperVivaReal(page=page, writer=writer)
@@ -197,3 +221,50 @@ if __name__ == "__main__":
             foo = 42
 
         foo = 42
+
+
+
+
+
+# if __name__ == "__main__":
+#     filepath_1 = '/media/user/Novo volume/Python/Secondary/realestate_scraper/test_data'
+#     filename_1 = 'vivareal_ab.csv'
+#     filename_2 = 'vivareal_b.csv'
+
+#     reader_1 = CsvReader(filepath_1, filename_1)
+#     reader_2 = CsvReader(filepath_1, filename_2)
+
+#     # data_1 = reader_1.load_data()
+#     data_2 = reader_2.load_data()
+
+#     appender = CsvAppender(reader_1, avoid_duplicates=True) #, duplicate_columns=['address', 'title'])
+#     appender.write(data_2)
+
+#     print("EOL")
+
+
+
+
+
+# if __name__ == "__main__":
+#     filepath_1 = '/media/user/Novo volume/Python/Secondary/realestate_scraper/test_data'
+#     filename_1 = 'merge_a1.csv'
+#     filename_2 = 'merge_a2.csv'
+
+#     data_a1 = pd.read_csv(os.path.join(filepath_1, filename_1), index_col=0)
+#     data_a2 = pd.read_csv(os.path.join(filepath_1, filename_2), index_col=0)
+
+#     # merged = pd.merge(data_a2, data_a1, how='inner', left_on=['address', 'title'], right_on=['address', 'title'])
+
+#     # # Merge the DataFrames
+#     # df_merged = pd.merge(data_a1, data_a2, how='inner', left_index=True, right_index=True, suffixes=('', '_remove'))    
+#     # # remove the duplicate columns
+#     # df_merged.drop([i for i in df_merged.columns if 'remove' in i], axis=1, inplace=True)
+
+#     columns = ['address', 'title']
+#     bool_mask = np.all([~data_a2[col].isin(data_a1[col]) for col in columns], axis=0)
+#     new_entries = data_a2[bool_mask]
+
+#     data_a3 = pd.concat([data_a1, new_entries], axis=0)
+
+#     print("EOL")
