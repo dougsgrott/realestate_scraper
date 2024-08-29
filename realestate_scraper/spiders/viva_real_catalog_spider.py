@@ -13,20 +13,27 @@ import time
 import random
 import logging
 import pprint
+from twisted.internet import reactor, defer
+from scrapy.crawler import CrawlerRunner
+from scrapy.utils.log import configure_logging
 
 import sys
-sys.path.append("/media/user/Novo volume/Python/Secondary/realestate_scraper/realestate_scraper")
-from items import VivaRealCatalogItem#, VivaRealStatusItem
+import os
+curr_path = os.path.dirname(os.path.realpath(__file__))
+base_path = os.path.abspath(os.path.join(curr_path, os.pardir))
+sys.path.append(base_path)
+from items import VivaRealCatalogItem
 import settings
 
+from scrapy.utils.reactor import install_reactor
 
 class VivaRealCatalogSpider(Spider):
     name = 'vivareal_catalog'
     handle_httpstatus_list = [404]
     redundancy_threshold = 30
-    # start_urls = [
-    #     'https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial',
-    #     ]
+    install_reactor('twisted.internet.asyncioreactor.AsyncioSelectorReactor')
+    # start_urls = []
+    # start_urls = ['https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial']
 
     customLogger = logging.getLogger(__name__)
     customLogger.setLevel(logging.INFO)
@@ -42,8 +49,8 @@ class VivaRealCatalogSpider(Spider):
         'ROBOTSTXT_OBEY': False,
         'ITEM_PIPELINES': {
             # 'realestate_scraper.pipelines.DuplicatesImoveisSCCatalogPipeline': 100,
-            'realestate_scraper.pipelines.SaveVivaRealCatalogPipeline': 200,
-            # 'realestate_scraper.pipelines.JsonWriterPipeline': 300,
+            # 'realestate_scraper.pipelines.SaveVivaRealCatalogPipeline': 200,
+            'pipelines.JsonWriterPipeline': 300,
         },
     }
 
@@ -51,10 +58,11 @@ class VivaRealCatalogSpider(Spider):
         url = "https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial"
         yield scrapy.Request(
             url,
+            callback=self.parse,
             meta={
                 'playwright': True,
                 'playwright_include_page': True,
-                'playwright_page_methods': [PageMethod('wait_for_selector', 'button.js-change-page')],
+                # 'playwright_page_methods': [PageMethod('wait_for_selector', 'button.js-change-page')],
                 'errback':self.errback,
             }
         )
@@ -83,13 +91,9 @@ class VivaRealCatalogSpider(Spider):
         self.customLogger.info("Spider Closed. {}".format(reason))
 
     # 1. FOLLOWING LEVEL 1
-    def parse(self, response):
+    async def parse(self, response):
         page = response.meta["playwright_page"]
-
-        # locator = page.locator("text=Próxima página")
-        # is_locator_enabled = locator.get_attribute('data-disabled') == None
-        # await page.close()
-
+        # await page.click("button.js-change-page")
 
         for sel in response.xpath('//*[contains(@class, "results-list")]/div'):
             yield self.populate_catalog(sel, response.url)
@@ -101,10 +105,6 @@ class VivaRealCatalogSpider(Spider):
             raise CloseSpider(reason=reason)
 
         time.sleep(random.randint(3,7))
-        # yield self.paginate(response)
-
-# response.xpath('/html/body/main/div[2]/div[1]/section/div[2]/div[2]/div/ul/li[6]/button').extract()[0]
-
 
     # 2. SCRAPING LEVEL 1
     def populate_catalog(self, selector, url):
@@ -122,47 +122,21 @@ class VivaRealCatalogSpider(Spider):
         catalog_loader.add_value('catalog_scraped_date', datetime.now().isoformat())
         catalog_loader.add_value('is_target_scraped', 0)
         loaded_item = catalog_loader.load_item()
+        # check if loaded_item has None values
+        if any(value is None for value in loaded_item.values()):
+            self.customLogger.error(f"Item with None values: {loaded_item}")
         return loaded_item
 
     # 3. PAGINATION LEVEL 1
     def paginate(self, response):
         pass
-        # next_page_url = response.xpath('//a[@class="next"]/@href').get()
-        # next_page_url = response.xpath('//*[contains(@class, "js-change-page")]')[-1]
-        # if next_page_url is not None:
-        #     return response.follow(next_page_url, self.parse)
 
 
 if __name__ == '__main__':
-    from playwright.sync_api import sync_playwright, expect
-    import time
-    import logging
+    url = 'https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial'
 
     process = CrawlerProcess(get_project_settings())
-    process.crawl(VivaRealCatalogSpider)
+    process.crawl(VivaRealCatalogSpider, start_urls=[url])
     process.start()
 
-    # LOGGER = logging.getLogger(__name__)
-
-    # with sync_playwright() as p:
-    #     navigator = p.chromium.launch(headless=False)
-    #     page = navigator.new_page()
-    #     page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial")
-
-    #     locator = page.locator("text=Próxima página")
-    #     is_locator_enabled = locator.get_attribute('data-disabled') == None
-
-    #     while is_locator_enabled:
-    #         locator.click()
-    #         time.sleep(3)
-    #         locator = page.locator("text=Próxima página")
-    #         is_locator_enabled = locator.get_attribute('data-disabled') == None
-
-    #     foo = 42
-
-    foo = 42
-
-
-# response.xpath('//*[@class="results-list js-results-list"]/*').extract()[0]
-
-
+    print("EOL")
