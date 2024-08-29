@@ -383,28 +383,30 @@ class SaveVivaRealCatalogPipeline(object):
         Initializes database connection and sessionmaker
         Creates tables
         """
-        self.engine = db_connect()
-        VivaRealCatalog.metadata.create_all(self.engine)
+        pass
+        # self.engine = db_connect()
+        # VivaRealCatalog.metadata.create_all(self.engine)
 
     def process_item(self, item, spider):
         """
         Save real estate index in the database
         This method is called for every item pipeline component
         """
-        with Session(self.engine) as session:
-            catalog = VivaRealCatalog()
+        pass
+        # with Session(self.engine) as session:
+        #     catalog = VivaRealCatalog()
 
-            fields = item.fields.keys()
-            for field in fields:
-                setattr(catalog, field, item[field])
+        #     fields = item.fields.keys()
+        #     for field in fields:
+        #         setattr(catalog, field, item[field])
 
-            print('Entry added')
-            session.add(catalog)
-            session.commit()
-            settings.saved = settings.saved + 1
-            settings.redundancy_streak = 0
-        
-        return item
+        #     print('Entry added')
+        #     session.add(catalog)
+        #     session.commit()
+        #     settings.saved = settings.saved + 1
+        #     settings.redundancy_streak = 0
+
+        # return item
 
 
 class SaveImoveisSCCatalogPipeline(object):

@@ -56,8 +56,19 @@ def getCidade(collected_data):
     cidade = collected_data[0].split(',')[-1].lstrip()
     return cidade
 
+# ####################################################
 
-def parse_details(selector_list):
+def parse_title(input_list):
+    input_string = ''.join(input_list)
+    return input_string.strip()
+
+
+def parse_address(input_list):
+    input_string = ''.join(input_list)
+    return input_string.strip()
+
+
+def get_details_text(selector_list):
     text_list = []
     for html_string in selector_list:
         soup = BeautifulSoup(html_string, 'html.parser')
@@ -67,7 +78,25 @@ def parse_details(selector_list):
     return concat_text
 
 
-def parse_amenities(html_string):
+def parse_details_text(input_string):
+    # 1. Remove all newline characters
+    parsed_string = input_string.replace('\n', '')
+
+    # 2. Remove all leading and trailing spaces
+    parsed_string = parsed_string.strip()
+
+    # 4. Remove any extra spaces around the units and words
+    parsed_string = re.sub(r'\s+', ' ', parsed_string)
+
+    # Remove extra spaces around commas
+    parsed_string = parsed_string.replace(' ,', ',')
+    parsed_string = parsed_string.replace(', ', ',')
+    parsed_string = parsed_string.replace(' <br>', '<br>')
+    parsed_string = parsed_string.replace('<br> ', '<br>')
+    return parsed_string
+
+
+def get_amenities_text(html_string):
     if html_string == []:
         return 'none'
     try:
@@ -78,7 +107,31 @@ def parse_amenities(html_string):
     return text
 
 
-def parse_values(html_string):
+def parse_amenities_text(input_string):
+    # if '<br>' not in input_string:
+    #     # replace \n\n with <br>
+
+    parsed_string = re.sub(r'         ', '<br>', input_string)
+    parsed_string = re.sub(r'\n\n+', '<br>', parsed_string)
+
+    # 2. Remove all leading and trailing spaces
+    parsed_string = parsed_string.strip()
+
+    # remove spaces whitespace without using strip
+    parsed_string = re.sub(r'\s+', ' ', parsed_string)
+    parsed_string = parsed_string.replace(' <br>', '<br>')
+    parsed_string = parsed_string.replace('<br> ', '<br>')
+
+    # remove trainling and leading <br>
+    parsed_string = parsed_string.strip('<br>')
+
+    # replace contigous <br> with single <br>
+    parsed_string = re.sub(r'(<br>)+', '<br>', parsed_string)
+
+    return parsed_string
+
+
+def get_values_text(html_string):
     if html_string == []:
         return 'none'
     try:
@@ -87,6 +140,25 @@ def parse_values(html_string):
     except:
         text = 'error'
     return text
+
+
+def parse_values_text(input_string):
+    if '<br>' not in input_string:
+        # replace \n\n with <br>
+        parsed_string = re.sub(r'\n\n+', '<br>', input_string)
+
+    # 2. Remove all leading and trailing spaces
+    parsed_string = parsed_string.strip()
+
+    # remove spaces whitespace without using strip
+    parsed_string = re.sub(r'\s+', ' ', parsed_string)
+    parsed_string = parsed_string.replace(' <br>', '<br>')
+    parsed_string = parsed_string.replace('<br> ', '<br>')
+
+    # remove trainling and leading <br>
+    parsed_string = parsed_string.strip('<br>')
+
+    return parsed_string
 
 
 def parse_target_url(url_list):
@@ -98,11 +170,11 @@ def parse_target_url(url_list):
 
 class VivaRealCatalogItem(scrapy.Item):
     type = scrapy.Field()
-    address = scrapy.Field()
-    title = scrapy.Field()
-    details = scrapy.Field(input_processor=parse_details)
-    amenities = scrapy.Field(input_processor=parse_amenities) #input_processor=cleanText
-    values = scrapy.Field(input_processor=parse_values) #input_processor=MapCompose(getLocal)
+    address = scrapy.Field(input_processor=parse_address)
+    title = scrapy.Field(input_processor=parse_title)
+    details = scrapy.Field(input_processor=Compose(get_details_text, parse_details_text))
+    amenities = scrapy.Field(input_processor=Compose(get_amenities_text, parse_amenities_text))
+    values = scrapy.Field(input_processor=Compose(get_values_text, parse_values_text))
     target_url = scrapy.Field(input_processor=parse_target_url)
     catalog_scraped_date = scrapy.Field()
     is_target_scraped = scrapy.Field()

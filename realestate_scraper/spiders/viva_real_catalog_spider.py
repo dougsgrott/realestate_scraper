@@ -13,9 +13,6 @@ import time
 import random
 import logging
 import pprint
-from twisted.internet import reactor, defer
-from scrapy.crawler import CrawlerRunner
-from scrapy.utils.log import configure_logging
 
 import sys
 import os
@@ -27,13 +24,20 @@ import settings
 
 from scrapy.utils.reactor import install_reactor
 
+from playwright.sync_api import sync_playwright, expect
+import time
+import logging
+
+# from twisted.internet import reactor, defer
+# from scrapy.crawler import CrawlerRunner
+# from scrapy.utils.log import configure_logging
+
+
 class VivaRealCatalogSpider(Spider):
     name = 'vivareal_catalog'
     handle_httpstatus_list = [404]
     redundancy_threshold = 30
     install_reactor('twisted.internet.asyncioreactor.AsyncioSelectorReactor')
-    # start_urls = []
-    # start_urls = ['https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial']
 
     customLogger = logging.getLogger(__name__)
     customLogger.setLevel(logging.INFO)
@@ -50,6 +54,7 @@ class VivaRealCatalogSpider(Spider):
         'ITEM_PIPELINES': {
             # 'realestate_scraper.pipelines.DuplicatesImoveisSCCatalogPipeline': 100,
             # 'realestate_scraper.pipelines.SaveVivaRealCatalogPipeline': 200,
+            # 'realestate_scraper.pipelines.JsonWriterPipeline': 300,
             'pipelines.JsonWriterPipeline': 300,
         },
     }
@@ -95,6 +100,22 @@ class VivaRealCatalogSpider(Spider):
         page = response.meta["playwright_page"]
         # await page.click("button.js-change-page")
 
+
+        # # Extract HTML content
+        # html_content = await page.content()
+        
+        # # Define the file path
+        # file_path = os.path.join("scraped_pages", f"page_{int(time.time())}.html")
+        
+        # # Ensure the directory exists
+        # os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        
+        # # Write the HTML content to a file
+        # with open(file_path, "w", encoding="utf-8") as file:
+        #     file.write(html_content)
+
+
+
         for sel in response.xpath('//*[contains(@class, "results-list")]/div'):
             yield self.populate_catalog(sel, response.url)
 
@@ -110,7 +131,6 @@ class VivaRealCatalogSpider(Spider):
     def populate_catalog(self, selector, url):
         catalog_loader = ItemLoader(item=VivaRealCatalogItem(), selector=selector)
         catalog_loader.default_output_processor = TakeFirst()
-
         catalog_loader.add_value('type', "catalog")
         catalog_loader.add_xpath('address', './/*[@class="property-card__address"]/text()')
         catalog_loader.add_xpath('title', './/*[contains(@class, "property-card__title")]/text()')
@@ -118,13 +138,9 @@ class VivaRealCatalogSpider(Spider):
         catalog_loader.add_xpath('amenities', './/*[contains(@class, "property-card__amenities")]')
         catalog_loader.add_xpath('values', './/*[contains(@class, "property-card__values")]')
         catalog_loader.add_xpath('target_url', './/*[contains(@class, "property-card__carousel")]/a/@href')
-        # catalog_loader.add_value('catalog_scraped_date', datetime.now())
         catalog_loader.add_value('catalog_scraped_date', datetime.now().isoformat())
         catalog_loader.add_value('is_target_scraped', 0)
         loaded_item = catalog_loader.load_item()
-        # check if loaded_item has None values
-        if any(value is None for value in loaded_item.values()):
-            self.customLogger.error(f"Item with None values: {loaded_item}")
         return loaded_item
 
     # 3. PAGINATION LEVEL 1
@@ -132,11 +148,14 @@ class VivaRealCatalogSpider(Spider):
         pass
 
 
+
+
 if __name__ == '__main__':
+
     url = 'https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial'
 
+    # scrape_url(url)
     process = CrawlerProcess(get_project_settings())
     process.crawl(VivaRealCatalogSpider, start_urls=[url])
     process.start()
-
     print("EOL")
