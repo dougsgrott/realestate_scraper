@@ -1,5 +1,7 @@
 
 from playwright.sync_api import sync_playwright, expect
+from itemloaders.processors import Compose, TakeFirst, Join, MapCompose
+import re
 import time
 import logging
 from bs4 import BeautifulSoup
@@ -8,12 +10,20 @@ import os
 import csv
 import numpy as np
 
+from scrapy.selector import Selector
 import sys
 import os
 
 
 class FooException(Exception):
     pass
+
+class CompleteException(Exception):
+    pass
+
+class LastPageException(Exception):
+    pass
+
 
 
 # #################################################
@@ -26,7 +36,20 @@ from itemloaders.processors import TakeFirst
 from datetime import datetime
 
 
-def parse_details(selector_list):
+
+# ####################################################
+
+def parse_title(input_list):
+    input_string = ''.join(input_list)
+    return input_string.strip()
+
+
+def parse_address(input_list):
+    input_string = ''.join(input_list)
+    return input_string.strip()
+
+
+def get_details_text(selector_list):
     text_list = []
     for html_string in selector_list:
         soup = BeautifulSoup(html_string, 'html.parser')
@@ -36,7 +59,25 @@ def parse_details(selector_list):
     return concat_text
 
 
-def parse_amenities(html_string):
+def parse_details_text(input_string):
+    # 1. Remove all newline characters
+    parsed_string = input_string.replace('\n', '')
+
+    # 2. Remove all leading and trailing spaces
+    parsed_string = parsed_string.strip()
+
+    # 4. Remove any extra spaces around the units and words
+    parsed_string = re.sub(r'\s+', ' ', parsed_string)
+
+    # Remove extra spaces around commas
+    parsed_string = parsed_string.replace(' ,', ',')
+    parsed_string = parsed_string.replace(', ', ',')
+    parsed_string = parsed_string.replace(' <br>', '<br>')
+    parsed_string = parsed_string.replace('<br> ', '<br>')
+    return parsed_string
+
+
+def get_amenities_text(html_string):
     if html_string == []:
         return 'none'
     try:
@@ -47,7 +88,31 @@ def parse_amenities(html_string):
     return text
 
 
-def parse_values(html_string):
+def parse_amenities_text(input_string):
+    # if '<br>' not in input_string:
+    #     # replace \n\n with <br>
+
+    parsed_string = re.sub(r'         ', '<br>', input_string)
+    parsed_string = re.sub(r'\n\n+', '<br>', parsed_string)
+
+    # 2. Remove all leading and trailing spaces
+    parsed_string = parsed_string.strip()
+
+    # remove spaces whitespace without using strip
+    parsed_string = re.sub(r'\s+', ' ', parsed_string)
+    parsed_string = parsed_string.replace(' <br>', '<br>')
+    parsed_string = parsed_string.replace('<br> ', '<br>')
+
+    # remove trainling and leading <br>
+    parsed_string = parsed_string.strip('<br>')
+
+    # replace contigous <br> with single <br>
+    parsed_string = re.sub(r'(<br>)+', '<br>', parsed_string)
+
+    return parsed_string
+
+
+def get_values_text(html_string):
     if html_string == []:
         return 'none'
     try:
@@ -56,6 +121,25 @@ def parse_values(html_string):
     except:
         text = 'error'
     return text
+
+
+def parse_values_text(input_string):
+    if '<br>' not in input_string:
+        # replace \n\n with <br>
+        parsed_string = re.sub(r'\n\n+', '<br>', input_string)
+
+    # 2. Remove all leading and trailing spaces
+    parsed_string = parsed_string.strip()
+
+    # remove spaces whitespace without using strip
+    parsed_string = re.sub(r'\s+', ' ', parsed_string)
+    parsed_string = parsed_string.replace(' <br>', '<br>')
+    parsed_string = parsed_string.replace('<br> ', '<br>')
+
+    # remove trainling and leading <br>
+    parsed_string = parsed_string.strip('<br>')
+
+    return parsed_string
 
 
 def parse_target_url(url_list):
@@ -67,11 +151,11 @@ def parse_target_url(url_list):
 
 class VivaRealCatalogItem(scrapy.Item):
     type = scrapy.Field()
-    address = scrapy.Field()
-    title = scrapy.Field()
-    details = scrapy.Field(input_processor=parse_details)
-    amenities = scrapy.Field(input_processor=parse_amenities) #input_processor=cleanText
-    values = scrapy.Field(input_processor=parse_values) #input_processor=MapCompose(getLocal)
+    address = scrapy.Field(input_processor=parse_address)
+    title = scrapy.Field(input_processor=parse_title)
+    details = scrapy.Field(input_processor=Compose(get_details_text, parse_details_text))
+    amenities = scrapy.Field(input_processor=Compose(get_amenities_text, parse_amenities_text))
+    values = scrapy.Field(input_processor=Compose(get_values_text, parse_values_text))
     target_url = scrapy.Field(input_processor=parse_target_url)
     catalog_scraped_date = scrapy.Field()
     is_target_scraped = scrapy.Field()
@@ -82,51 +166,50 @@ class ScraperVivaReal(object):
         self.page = page
         self.writer = writer
         self.batch_items = []
-    # def scrape(): pass
 
     def scrape_page(self):
         """
-        Parses the page and yields the scraped data.
+        Parses the page and returns the scraped data.
         """
-        page_items = []
+        print("Scraping page")
+        html = self.page.content()
+        sel_page = Selector(text=html)
+        sel_items, has_multiple_page, last_page = self.find_selectors(sel_page)
+        page_items = [self.populate_item(sel, self.page.url) for sel in sel_items]
+        self.batch_items += page_items
+        return page_items
 
-        results_list = self.page.locator('//*[contains(@class, "results-list")]/div')
-        for result in results_list.element_handles():
-            item = self.populate_item(result)
-            page_items.append(item)
+    def find_selectors(self, response):
+        print("Finding selectors")
+        selectors = response.xpath('//*[contains(@class, "results-list")]/div')
+        if not selectors:
+            raise FooException("No selectors found in the response.")
+        
+        next_page_locator = self.page.locator("text=Próxima página")
+        is_last_page = next_page_locator.get_attribute('data-disabled') == None
 
+        nearby_selector = response.xpath('//div[@data-type="nearby"]')
+        if nearby_selector:
+            i = 0
+            while i < len(selectors) and selectors[i].attrib.get('data-type') != 'nearby':
+                i += 1
+            return selectors[:i], False, is_last_page
+        
+        return selectors, True, is_last_page
+
+    def write(self, items):
         if self.writer != None:
             if self.writer.write_in_batches == False:
-                self.writer.write(page_items)
-            else:
-                self.batch_items += page_items
+                print("Writing items")
+                self.writer.write(items)
 
+    def write_batch(self):
+        if self.writer != None:
+            if self.writer.write_in_batches == True:
+                print("Writing batch")
+                self.writer.write(self.batch_items)
 
-    def populate_item(self, result):
-        address = result.query_selector('//*[@class="property-card__address"]').inner_text()
-        title = result.query_selector('//*[contains(@class, "property-card__title")]').inner_text()
-        price = result.query_selector('//*[contains(@class, "property-card__values")]').inner_text()
-
-        if result.query_selector('//*[contains(@class, "property-card__amenities")]') != None:
-            amenities = result.query_selector('//*[contains(@class, "property-card__amenities")]').inner_text()
-        else:
-            amenities = None
-
-        _detail_locators = result.query_selector_all('//*[contains(@class, "property-card__detail-item")]')
-        detail_list = [locator.inner_text() for locator in _detail_locators]
-        target_url = result.query_selector('//*[contains(@class, "property-card__carousel")]/a').get_attribute('href')
-
-        item = {
-            'address': address,
-            'title': title,
-            'price': price,
-            'amenities': amenities,
-            'details': detail_list,
-            'target_url': target_url,
-        }
-        return item
-
-    def populate_catalog(self, selector, url):
+    def populate_item(self, selector, url):
         catalog_loader = ItemLoader(item=VivaRealCatalogItem(), selector=selector)
         catalog_loader.default_output_processor = TakeFirst()
 
@@ -137,28 +220,38 @@ class ScraperVivaReal(object):
         catalog_loader.add_xpath('amenities', './/*[contains(@class, "property-card__amenities")]')
         catalog_loader.add_xpath('values', './/*[contains(@class, "property-card__values")]')
         catalog_loader.add_xpath('target_url', './/*[contains(@class, "property-card__carousel")]/a/@href')
-        # catalog_loader.add_value('catalog_scraped_date', datetime.now())
         catalog_loader.add_value('catalog_scraped_date', datetime.now().isoformat())
         catalog_loader.add_value('is_target_scraped', 0)
         loaded_item = catalog_loader.load_item()
         return loaded_item
 
-
-    def _scrape_target(): pass
-
     def next_page(self):
+        print("Next page")
+
+        nearby_data_exists = self.page.locator('//div[@data-type="nearby"]').is_visible()
+        if nearby_data_exists:
+            raise LastPageException("Remaining data is not from the same location")
+
         locator = self.page.locator("text=Próxima página")
         is_locator_enabled = locator.get_attribute('data-disabled') == None
         if is_locator_enabled:
             locator.click()
             time.sleep(3)
         else:
-            if self.writer != None:
-                if self.writer.write_in_batches == True:
-                    self.writer.write(self.batch_items)
+            raise LastPageException("No more pages to scrape")
 
-            raise FooException("No more pages to scrape")
-
+    def run(self):
+        try:
+            while True:
+                scraped_items = self.scrape_page()
+                self.next_page()
+                self.write(scraped_items)
+        except LastPageException:
+            self.write_batch()
+            print("Scraping complete")
+        except CompleteException:
+            pass
+            # raise CompleteException("Scraping complete")
 
 
 
@@ -302,7 +395,8 @@ if __name__ == "__main__":
         navigator = p.chromium.launch(headless=False)
         page = navigator.new_page()
         # page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial")
-        page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/apartamento_residencial/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,,,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20de%20Itaparica,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20de%20Itaparica,,,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial")
+        # page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/apartamento_residencial/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,,,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20de%20Itaparica,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20de%20Itaparica,,,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial")
+        page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/nova-itaparica/#onde=,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Nova%20Itaparica,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3ENova%20Itaparica")
 
         # writer = CsvWriter(
         #     file_path=file_path,
@@ -318,21 +412,22 @@ if __name__ == "__main__":
         writer = CsvAppender(
             reader=CsvReader(file_path=file_path, file_name=file_name),
             avoid_duplicates=True,
-            duplicate_columns=['address', 'title', 'price'],
+            duplicate_columns=['address', 'title', 'values'],
             # mode='a'
         )
 
-        scraper = ScraperVivaReal(page=page, writer=writer)
+        scraper = ScraperVivaReal(page=page) #, writer=writer
         time.sleep(3)
 
-        # scraper.scrape_page()
+        scraper.run()
 
-        try:
-            while True:
-                scraper.scrape_page()
-                scraper.next_page()
-        except FooException:
-            foo = 42
+        # scraper.scrape_page()
+        # try:
+        #     while True:
+        #         scraper.scrape_page()
+        #         scraper.next_page()
+        # except FooException:
+        #     foo = 42
 
         foo = 42
 
