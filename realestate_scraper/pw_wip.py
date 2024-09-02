@@ -15,6 +15,16 @@ import sys
 import os
 
 
+# Configure logging to write to both a file and the console
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('scraper.log', mode='a'),  # Log file handler
+        logging.StreamHandler()                        # Console handler
+    ]
+)
+
 class FooException(Exception):
     pass
 
@@ -166,6 +176,10 @@ class ScraperVivaReal(object):
         self.page = page
         self.writer = writer
         self.batch_items = []
+        self.n_pagination = 0
+        self.n_duplicates = 0
+        self.start_datetime = datetime.now()
+        self.finish_datetime = None
 
     def scrape_page(self):
         """
@@ -174,28 +188,73 @@ class ScraperVivaReal(object):
         print("Scraping page")
         html = self.page.content()
         sel_page = Selector(text=html)
-        sel_items, has_multiple_page, last_page = self.find_selectors(sel_page)
+        aux_data = self.scrape_auxiliary_data(sel_page)
+        sel_items = self.find_selectors(sel_page, aux_data) #, has_multiple_page, last_page
         page_items = [self.populate_item(sel, self.page.url) for sel in sel_items]
         self.batch_items += page_items
+        # Increment the pagination counter
+        self.n_pagination += 1
         return page_items
 
-    def find_selectors(self, response):
+    def scrape_auxiliary_data(self, response):
+        print("Scraping auxiliary data")
+        try:
+            next_page_locator = self.page.locator("text=Próxima página")
+            is_last_page = next_page_locator.get_attribute('data-disabled') == None
+        except:
+            is_last_page = 'Error'
+
+        try:
+            n_items_text = BeautifulSoup(response.xpath('//h1[contains(@class, "results-summary__title")]/strong').get(), 'html.parser').get_text()
+            n_items = int(n_items_text.split()[0]) # ALT: # n_items = int(re.search(r'\d+', n_items_text).group())
+        except:
+            n_items = 'Error'
+
+        try:
+            curr_page_text = response.xpath('//li[contains(@class, "pagination__item")]//button[@data-active]').attrib['data-page']
+            curr_page = int(curr_page_text)
+        except:
+            curr_page = 'Error'
+
+        try:
+            breadcrumb_pt1 = [r.get() for r in response.xpath('//a[contains(@class, "breadcrumb__item")]/text()')]
+            breadcrumb_pt2 = response.xpath('//span[contains(@class, "breadcrumb__item")]/text()')[0].get()
+            breadcrumb = '> '.join(breadcrumb_pt1 + [breadcrumb_pt2])
+        except:
+            breadcrumb = 'Error'
+
+        try:
+            location_filter = response.xpath('//ul[contains(@class, "location__pill-list")]//li').attrib['data-value']
+            location_filter_alt = ''.join([r.get() for r in response.xpath('//ul[contains(@class, "location__pill-list")]//li//span/text()')])
+        except:
+            location_filter = 'Error'
+            location_filter_alt = 'Error'
+
+        try:
+            have_nearby_data = response.xpath('//div[@data-type="nearby"]') != []
+        except:
+            have_nearby_data = 'Error'
+
+        return {
+            'n_items': n_items,
+            'curr_page': curr_page,
+            'breadcrumb': breadcrumb,
+            'location_filter': location_filter,
+            'location_filter_alt': location_filter_alt,
+            'is_last_page': is_last_page,
+            'have_nearby_data': have_nearby_data,
+        }
+
+    def find_selectors(self, response, aux_data):
         print("Finding selectors")
         selectors = response.xpath('//*[contains(@class, "results-list")]/div')
         if not selectors:
             raise FooException("No selectors found in the response.")
-        
-        next_page_locator = self.page.locator("text=Próxima página")
-        is_last_page = next_page_locator.get_attribute('data-disabled') == None
 
-        nearby_selector = response.xpath('//div[@data-type="nearby"]')
-        if nearby_selector:
-            i = 0
-            while i < len(selectors) and selectors[i].attrib.get('data-type') != 'nearby':
-                i += 1
-            return selectors[:i], False, is_last_page
-        
-        return selectors, True, is_last_page
+        # nearby_selector = response.xpath('//div[@data-type="nearby"]')
+        if aux_data['have_nearby_data']:# i = 0# while i < len(selectors) and selectors[i].attrib.get('data-type') != 'nearby':#     i += 1
+            return selectors[:aux_data['n_items']]#, False, is_last_page
+        return selectors#, True, is_last_page
 
     def write(self, items):
         if self.writer != None:
@@ -241,18 +300,43 @@ class ScraperVivaReal(object):
             raise LastPageException("No more pages to scrape")
 
     def run(self):
+        logging.info(f"Scraping started at {self.start_datetime}")
         try:
             while True:
                 scraped_items = self.scrape_page()
                 self.next_page()
                 self.write(scraped_items)
         except LastPageException:
+            print("Last page reached (exception)")
             self.write_batch()
-            print("Scraping complete")
-        except CompleteException:
-            pass
+            self.take_action()
+        self.close_spider()
+        # except CompleteException:
+        #     print("Scraping complete (exception)")
+        #     self.close_spider()
             # raise CompleteException("Scraping complete")
 
+    def take_action(self):
+        print("Delineating action")
+        # raise CompleteException("Scraping complete")
+
+    def close_spider(self):
+        print("Closing spider")
+        self.finish_datetime = datetime.now()
+        # # Save aggregated data at the end using write_in_batches
+        # if self.writer is not None and self.writer.write_in_batches:
+        #     self.writer.write_in_batches(self.batch_items)
+        
+        # Log the results
+        self.log_results()
+
+    def log_results(self):
+        print("Logging results")
+        logging.info(f"Scraping completed.")
+        logging.info(f"Total pages scraped: {self.n_pagination}")
+        logging.info(f"Total items scraped: {len(self.batch_items)}")
+        logging.info(f"Total duplicates found: {self.n_duplicates}")
+        logging.info(f"Scraping ended at {self.finish_datetime}")
 
 
 # #################################################
@@ -413,10 +497,11 @@ if __name__ == "__main__":
             reader=CsvReader(file_path=file_path, file_name=file_name),
             avoid_duplicates=True,
             duplicate_columns=['address', 'title', 'values'],
+            write_in_batches=True,
             # mode='a'
         )
 
-        scraper = ScraperVivaReal(page=page) #, writer=writer
+        scraper = ScraperVivaReal(page=page, writer=writer)
         time.sleep(3)
 
         scraper.run()
