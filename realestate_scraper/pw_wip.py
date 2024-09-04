@@ -1,4 +1,5 @@
 
+import random
 from playwright.sync_api import sync_playwright, expect
 from itemloaders.processors import Compose, TakeFirst, Join, MapCompose
 import re
@@ -9,6 +10,14 @@ import pandas as pd
 import os
 import csv
 import numpy as np
+from fake_useragent import UserAgent
+from typing import List, Optional
+from sqlalchemy import create_engine, Column, String
+# from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Integer, String, DateTime
+from sqlalchemy.orm import sessionmaker, declarative_base, Mapped, mapped_column, DeclarativeBase, Session
+from scrapy.utils.project import get_project_settings
+
 
 from scrapy.selector import Selector
 import sys
@@ -17,10 +26,11 @@ import os
 
 # Configure logging to write to both a file and the console
 logging.basicConfig(
-    level=logging.INFO,
+    # level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('scraper.log', mode='a'),  # Log file handler
+        logging.FileHandler('pw_scraper_log.log', mode='a'),  # Log file handler
         logging.StreamHandler()                        # Console handler
     ]
 )
@@ -34,6 +44,8 @@ class CompleteException(Exception):
 class LastPageException(Exception):
     pass
 
+class DuplicateItem(Exception):
+    pass
 
 
 # #################################################
@@ -171,6 +183,22 @@ class VivaRealCatalogItem(scrapy.Item):
     is_target_scraped = scrapy.Field()
 
 
+# Function to get a random User-Agent
+def get_random_user_agent():
+    ua = UserAgent()
+    return ua.random
+
+
+# Function to get a random proxy
+def get_random_proxy():
+    proxies = [
+        "http://proxy1.example.com:8080",
+        "http://proxy2.example.com:8080",
+        # Add more proxies here
+    ]
+    return random.choice(proxies)
+
+
 class ScraperVivaReal(object):
     def __init__(self, page, writer=None):
         self.page = page
@@ -189,6 +217,7 @@ class ScraperVivaReal(object):
         html = self.page.content()
         sel_page = Selector(text=html)
         aux_data = self.scrape_auxiliary_data(sel_page)
+        logging.debug(f"Auxiliary data: {aux_data}")
         sel_items = self.find_selectors(sel_page, aux_data) #, has_multiple_page, last_page
         page_items = [self.populate_item(sel, self.page.url) for sel in sel_items]
         self.batch_items += page_items
@@ -224,11 +253,13 @@ class ScraperVivaReal(object):
             breadcrumb = 'Error'
 
         try:
-            location_filter = response.xpath('//ul[contains(@class, "location__pill-list")]//li').attrib['data-value']
-            location_filter_alt = ''.join([r.get() for r in response.xpath('//ul[contains(@class, "location__pill-list")]//li//span/text()')])
+            # location_filter = response.xpath('//ul[contains(@class, "location__pill-list")]//li').attrib['data-value']
+            location_filter_list = [s.attrib['data-value'] for s in response.xpath('//ul[contains(@class, "location__pill-list")]//li')]
+            location_filter = '<br>'.join(location_filter_list)
+            # location_filter_alt = ''.join([r.get() for r in response.xpath('//ul[contains(@class, "location__pill-list")]//li//span/text()')])
         except:
             location_filter = 'Error'
-            location_filter_alt = 'Error'
+            # location_filter_alt = 'Error'
 
         try:
             have_nearby_data = response.xpath('//div[@data-type="nearby"]') != []
@@ -240,7 +271,7 @@ class ScraperVivaReal(object):
             'curr_page': curr_page,
             'breadcrumb': breadcrumb,
             'location_filter': location_filter,
-            'location_filter_alt': location_filter_alt,
+            # 'location_filter_alt': location_filter_alt,
             'is_last_page': is_last_page,
             'have_nearby_data': have_nearby_data,
         }
@@ -295,7 +326,9 @@ class ScraperVivaReal(object):
         is_locator_enabled = locator.get_attribute('data-disabled') == None
         if is_locator_enabled:
             locator.click()
-            time.sleep(3)
+            # sleep between 5 and 7 seconds
+            time.sleep(4 + 3 * np.random.random())
+
         else:
             raise LastPageException("No more pages to scrape")
 
@@ -410,9 +443,87 @@ class CsvWriter(DataWriter):
         self._write(new_entries)
 
 
+class Base(DeclarativeBase):
+    pass
+
 class SqliteWriter(DataWriter):
-    def __init__(self):
-        pass
+
+    def __init__(self,
+        # db_path: str,# table_name: str,# columns: List[str],
+        avoid_duplicates: bool,
+        duplicate_columns: List[str] = [], #None
+    ):
+        # self.db_path = db_path# self.table_name = table_name# self.columns = columns
+        self.avoid_duplicates = avoid_duplicates
+        self.duplicate_columns = duplicate_columns or []
+
+        # self.conn = sqlite3.connect(self.db_path)# self.cursor = self.conn.cursor()# self.create_table()
+        # ###############
+        engine = self.db_connect()
+        self.create_table(engine)
+        self.factory = sessionmaker(bind=engine)
+
+    def db_connect(self):
+        """
+        Performs database connection using database settings from settings.py.
+        Returns sqlaclchemy engine instance.
+        """
+        url = get_project_settings().get("CONNECTION_STRING")
+        return create_engine(url)
+
+    def create_table(self, engine):
+        Base.metadata.create_all(engine, checkfirst=True)
+
+    def check_duplicate(self, item): #, session=None
+        session = self.factory()
+        # session = session if session is not None else self.factory()
+        exist_title = session.query(VivaRealCatalog).filter_by(title=item["title"]).first()
+        session.close()
+        if (exist_title is not None):
+            print("Duplicate item found: {}".format(item["title"]))
+            # raise DropItem("Duplicate item found: {}".format(item["title"]))
+        else:
+            return item
+
+    def write(self, item): #, session=None
+        # session = self.factory()
+        try:
+            self.check_duplicate(item) #, session
+            self.process_item(item) #, session
+        except DuplicateItem as e:
+            print(e)
+        # finally:
+        #     session.close()
+
+    def process_item(self, item):
+        """
+        This method is called for every item pipeline component
+        """
+        session = self.factory()
+        # session = session if session is not None else self.factory()
+        catalog = VivaRealCatalog()
+        catalog.type = item["type"]
+        catalog.address = item["address"]
+        catalog.title = item["title"]
+        catalog.details = item["details"]
+        catalog.amenities = item["amenities"]
+        catalog.values = item["values"]
+        catalog.target_url = item["target_url"]
+        catalog.catalog_scraped_date = item['catalog_scraped_date']
+        catalog.is_target_scraped = item["is_target_scraped"]
+
+        try:
+            print('Entry added')
+            session.add(catalog)
+            session.commit()
+        except:
+            print('rollback')
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+        return item
 
 
 class DataAppender(object):
@@ -457,6 +568,31 @@ class CsvAppender(DataAppender):
         self._write(new_entries)
 
 
+class VivaRealCatalog(Base):
+    __tablename__ = "vivareal_catalog"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    type: Mapped[str] = mapped_column(String(20))
+    address: Mapped[str] = mapped_column(String(200))
+    title: Mapped[str] = mapped_column(String(200)) # Mapped[Optional[str]]
+    details: Mapped[str] = mapped_column(String(200))
+    amenities: Mapped[Optional[str]] = mapped_column(String(200))
+    values: Mapped[str] = mapped_column(String(200))
+    target_url: Mapped[str] = mapped_column(String(200))
+    # catalog_scraped_date: Mapped[DateTime] = mapped_column(DateTime)
+    catalog_scraped_date: Mapped[str] = mapped_column(String(30))
+    is_target_scraped: Mapped[int] = mapped_column(Integer)
+
+
+# address: "Rua Doutor Otorino Avancini, 606 - Nova Itaparica, Vila Velha - ES"
+# amenities: Portão eletrônico Área de serviço Armário na cozinha Armário no banheiro Box blindex
+# catalog_scraped_date: 2024-09-03T12:37:09.792558
+# details: 55 m²<br>2 Quartos<br>1 Banheiro<br>-- Vaga
+# is_target_scraped: 0
+# target_url: https://www.vivareal.com.br/imovel/apartamento-2-quartos-nova-itaparica-bairros-vila-velha-55m2-aluguel-RS1300-id-2738160163/
+# title: "Apartamento com 2 Quartos para Aluguel, 55m²"
+# type: catalog
+# values: R$ 1.300 /Mês
 
 
 # #################################################
@@ -464,128 +600,116 @@ class CsvAppender(DataAppender):
 # #################################################
 
 
+# if __name__ == "__main__":
+#     LOGGER = logging.getLogger(__name__)
+
+#     curr_path = os.path.dirname(os.path.realpath(__file__))
+#     base_path = os.path.abspath(os.path.join(curr_path, os.pardir))
+#     file_path = os.path.join(base_path, 'data') #'/media/user/Novo volume/Python/Secondary/realestate_scraper/data'
+#     file_name = 'foo.csv'
+
+#     with sync_playwright() as p:
+#         # use browser as firefox
+#         # browser = p.firefox.launch(headless=False)
+#         # browser = p.chromium.launch(headless=False)
+#         # context = browser.new_context()
+#         # page = browser.new_page()
+#                     # page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/apartamento_residencial/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,,,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20de%20Itaparica,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20de%20Itaparica,,,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial")
+
+#         urls = [
+#             # Vila Velha, Nova Itaparica
+#             "https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/nova-itaparica/#onde=,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Nova%20Itaparica,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3ENova%20Itaparica",
+#             # Vila Velha, Nova Itaparica and Jockey de Itaparica
+#             "https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/nova-itaparica/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Nova%20Itaparica,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3ENova%20Itaparica,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Jockey%20de%20Itaparica,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EJockey%20de%20Itaparica,,,",
+#             # Vila Velha, Itapuã and Praia da Costa
+#             "https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial",
+#         ]
+
+#         # writer = CsvWriter(#     file_path=file_path,#     write_in_batches=False,# )
+
+#         writer = CsvAppender(
+#             reader=CsvReader(file_path=file_path, file_name=file_name),
+#             avoid_duplicates=True,
+#             duplicate_columns=['address', 'title', 'values'],
+#             write_in_batches=True,
+#         )
+
+#         # writer = SqliteWriter(
+#         #     avoid_duplicates=True,
+#         #     duplicate_columns=['address', 'title', 'values'],
+#         # )
+
+#         for url in urls:
+#             browser = p.chromium.launch(headless=False)
+#             context = browser.new_context()
+#             page = browser.new_page()
+
+#             scraper = ScraperVivaReal(page=page, writer=writer)
+
+#             # Set random User-Agent# user_agent = get_random_user_agent()# context.set_extra_http_headers({"User-Agent": user_agent})
+#             # Set random proxy# proxy = get_random_proxy()# context.set_proxy({"server": proxy})
+
+#             page.goto(url)
+#             scraper.page.wait_for_load_state('load')
+
+#             time.sleep(random.uniform(5, 10))  # Random delay between 5 to 10 seconds
+#             scraper.run()
+#             browser.close()
+#             time.sleep(3)
+
 if __name__ == "__main__":
-    LOGGER = logging.getLogger(__name__)
 
-    curr_path = os.path.dirname(os.path.realpath(__file__))
-    base_path = os.path.abspath(os.path.join(curr_path, os.pardir))
-    # sys.path.append(base_path)
-    file_path = os.path.join(base_path, 'data') #'/media/user/Novo volume/Python/Secondary/realestate_scraper/data'
-    file_name = 'foo.csv'
+    input_str = """
+    ,address,amenities,catalog_scraped_date,details,is_target_scraped,target_url,title,type,values
+    0,"Rua Doutor Otorino Avancini, 606 - Nova Itaparica, Vila Velha - ES","Portão eletrônico Área de serviço Armário na cozinha Armário no banheiro Box blindex",2024-09-03T12:37:09.792558,"55 m²<br>2 Quartos<br>1 Banheiro<br>-- Vaga",0,https://www.vivareal.com.br/imovel/apartamento-2-quartos-nova-itaparica-bairros-vila-velha-55m2-aluguel-RS1300-id-2738160163/,"Apartamento com 2 Quartos para Aluguel, 55m²",catalog,"R$ 1.300 /Mês"
+    1,"Rua Vinícius de Morais - Nova Itaparica, Vila Velha - ES","none",2024-09-03T12:37:09.802709,"430 m²<br>-- Quarto<br>-- Banheiro<br>-- Vaga",0,https://www.vivareal.com.br/imovel/galpao-deposito-armazem-nova-itaparica-bairros-vila-velha-430m2-aluguel-RS7500-id-2715660696/,"Galpão/Depósito/Armazém para Aluguel, 430m²",catalog,"R$ 7.500 /Mês"
+    0,"Rua Coronel Otto Netto - Jockey de Itaparica, Vila Velha - ES","Piscina<br>Churrasqueira<br>Elevador<br>Varanda<br>Academia<br>...",2024-09-03T12:37:23.169182,"54 m²<br>2 Quartos<br>2 Banheiros<br>1 Vaga",0,https://www.vivareal.com.br/imovel/apartamento-2-quartos-jockey-de-itaparica-bairros-vila-velha-com-garagem-54m2-aluguel-RS2000-id-2734570841/,"Apartamento com 2 Quartos para Aluguel, 54m²",catalog,"R$ 2.000 /Mês<br>Condomínio: R$ 384"
+    1,"Avenida dos Estados, 10 - Jockey de Itaparica, Vila Velha - ES","Portão eletrônico<br>Elevador<br>Bicicletário",2024-09-03T12:37:23.181741,"68 m²<br>2 Quartos<br>2 Banheiros<br>1 Vaga",0,https://www.vivareal.com.br/imovel/apartamento-2-quartos-jockey-de-itaparica-bairros-vila-velha-com-garagem-68m2-aluguel-RS1550-id-2737910909/,"Apartamento com 2 Quartos para Aluguel, 68m²",catalog,"R$ 1.550 /Mês<br>Preço abaixo do mercado<br>Condomínio: R$ 250"
+    2,"Rua Porto Seguro, 286 - Jockey de Itaparica, Vila Velha - ES","Lavanderia<br>Portão eletrônico",2024-09-03T12:37:23.203799,"35 m²<br>1 Quarto<br>1 Banheiro<br>-- Vaga",0,https://www.vivareal.com.br/imovel/kitnet-1-quartos-jockey-de-itaparica-bairros-vila-velha-35m2-aluguel-RS950-id-2706987955/,"Apartamento com Quarto para Aluguel, 35m²",catalog,"R$ 950 /Mês"
+    3,"Avenida Ceará, 500 - Jockey de Itaparica, Vila Velha - ES","Mobiliado<br>Churrasqueira<br>Condomínio fechado<br>Aceita animais<br>Playground<br>...",2024-09-03T12:37:23.220110,"51 m²<br>2 Quartos<br>1 Banheiro<br>1 Vaga",0,https://www.vivareal.com.br/imovel/apartamento-2-quartos-jockey-de-itaparica-bairros-vila-velha-com-garagem-51m2-aluguel-RS1700-id-2733888516/,"Apartamento com 2 Quartos para Aluguel, 51m²",catalog,"R$ 1.700 /Mês<br>Condomínio: R$ 147"
+    4,"Avenida Ceará, 300 - Jockey de Itaparica, Vila Velha - ES","Condomínio fechado",2024-09-03T12:37:23.234845,"50 m²<br>2 Quartos<br>1 Banheiro<br>1 Vaga",0,https://www.vivareal.com.br/imovel/apartamento-2-quartos-jockey-de-itaparica-bairros-vila-velha-com-garagem-50m2-aluguel-RS1100-id-2737985914/,"Apartamento com 2 Quartos para Aluguel, 50m²",catalog,"R$ 1.100 /Mês<br>Condomínio: R$ 300"
+    5,"Avenida Ceará - Jockey de Itaparica, Vila Velha - ES","Condomínio fechado",2024-09-03T12:37:23.242894,"52 m²<br>2 Quartos<br>1 Banheiro<br>1 Vaga",0,https://www.vivareal.com.br/imovel/apartamento-2-quartos-jockey-de-itaparica-bairros-vila-velha-com-garagem-52m2-aluguel-RS1700-id-2736845623/,"Apartamento com 2 Quartos para Aluguel, 52m²",catalog,"R$ 1.700 /Mês<br>Condomínio: R$ 290"
+    6,"Rua Coronel Otto Netto - Jockey de Itaparica, Vila Velha - ES","Piscina<br>Churrasqueira<br>Elevador<br>Academia<br>Aceita animais<br>...",2024-09-03T12:37:23.263289,"60 m²<br>2 Quartos<br>2 Banheiros<br>1 Vaga",0,https://www.vivareal.com.br/imovel/apartamento-2-quartos-jockey-de-itaparica-bairros-vila-velha-com-garagem-60m2-aluguel-RS2300-id-2733818315/,"Apartamento com 2 Quartos para Aluguel, 60m²",catalog,"R$ 2.300 /Mês<br>Condomínio: R$ 350"
+    """
 
-    with sync_playwright() as p:
-        # use navigator as firefox
-        # navigator = p.firefox.launch(headless=False)
-        navigator = p.chromium.launch(headless=False)
-        page = navigator.new_page()
-        # page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/itapua/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Itapu%C3%A3,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EItapua,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20da%20Costa,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20da%20Costa,-20.330616,-40.290992,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial")
-        # page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/apartamento_residencial/#onde=Brasil,Esp%C3%ADrito%20Santo,Vila%20Velha,,,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha,,,;,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Praia%20de%20Itaparica,,,neighborhood,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3EPraia%20de%20Itaparica,,,&tipos=apartamento_residencial,flat_residencial,kitnet_residencial")
-        page.goto("https://www.vivareal.com.br/aluguel/espirito-santo/vila-velha/bairros/nova-itaparica/#onde=,Esp%C3%ADrito%20Santo,Vila%20Velha,Bairros,Nova%20Itaparica,,,,BR%3EEspirito%20Santo%3ENULL%3EVila%20Velha%3EBarrios%3ENova%20Itaparica")
+    # Split the input string into lines
+    lines = input_str.strip().split('\n')
 
-        # writer = CsvWriter(
-        #     file_path=file_path,
-        #     write_in_batches=False,
-        # )
+    # Extract the header and the data rows
+    header = lines[0].split(',')
+    data_rows = lines[1:]
 
-        # writer = CsvAppender(
-        #     reader=CsvReader(file_path=file_path, file_name=file_name),
-        #     avoid_duplicates=True,
-        #     duplicate_columns=['address', 'title', 'price'],
-        #     # mode='a'
-        # ) 
-        writer = CsvAppender(
-            reader=CsvReader(file_path=file_path, file_name=file_name),
-            avoid_duplicates=True,
-            duplicate_columns=['address', 'title', 'values'],
-            write_in_batches=True,
-            # mode='a'
-        )
+    # Parse the data rows into a list of dictionaries
+    data = []
+    for row in data_rows:
+        # Use regex to split the row by commas, but ignore commas inside quotes
+        row_data = re.split(r',(?=(?:[^"]*"[^"]*")*[^"]*$)', row)
+        # Remove quotes from each field
+        row_data = [field.strip('"') for field in row_data]
+        # Create a dictionary for the row
+        row_dict = dict(zip(header, row_data))
+        data.append(row_dict)
 
-        scraper = ScraperVivaReal(page=page, writer=writer)
-        time.sleep(3)
+    # Create a pandas DataFrame from the list of dictionaries
+    df = pd.DataFrame(data)
 
-        scraper.run()
-
-        # scraper.scrape_page()
-        # try:
-        #     while True:
-        #         scraper.scrape_page()
-        #         scraper.next_page()
-        # except FooException:
-        #     foo = 42
-
-        foo = 42
+    # Display the DataFrame
+    print(df)
 
 
+    some_item = {
+        'address': 'Rua Doutor Otorino Avancini, 606 - Nova Itaparica, Vila Velha - ES',
+        'amenities': 'Portão eletrônico Área de serviço Armário na cozinha Armário no banheiro Box blindex',
+        'catalog_scraped_date': '2024-09-03T22:46:31.381278',
+        'details': '55 m²<br>2 Quartos<br>1 Banheiro<br>-- Vaga',
+        'is_target_scraped': 0,
+        'target_url': 'https://www.vivareal.com.br/imovel/apartamento-2-quartos-nova-itaparica-bairros-vila-velha-55m2-aluguel-RS1300-id-2738160163/',
+        'title': 'Apartamento com 2 Quartos para Aluguel, 55m²',
+        'type': 'catalog',
+        'values': 'R$ 1.300 /Mês'
+    }
 
+    sql_writer = SqliteWriter(avoid_duplicates=True)
+    sql_writer.write(some_item)
 
-
-# if __name__ == "__main__":
-#     filepath_1 = '/media/user/Novo volume/Python/Secondary/realestate_scraper/test_data'
-#     filepath_2 = '/media/user/Novo volume/Python/Secondary/realestate_scraper/test_data/foo'
-#     filename_1 = 'vivareal_ab.csv'
-#     filename_2 = 'vivareal_b.csv'
-
-#     reader_1 = CsvReader(filepath_1, filename_1)
-#     reader_2 = CsvReader(filepath_1, filename_2)
-
-#     # data_1 = reader_1.load_data()
-#     data_2 = reader_2.load_data()
-
-#     appender = CsvWriter(filepath_2, reader_1, avoid_duplicates=False) #, duplicate_columns=['address', 'title'])
-#     appender.write(data_2)
-
-#     print("EOL")
-
-
-
-
-
-
-# if __name__ == "__main__":
-#     """
-#     vivareal_ab is initially equal to vivareal_a. As this main runs, vivareal_b is added to vivareal_ab.
-#     If avoid_duplicates=True, no duplicates will be appended to vivareal_ab.
-#     If avoid_duplicates=False, duplicates will be appended to vivareal_ab.
-#     """
-#     filepath_1 = '/media/user/Novo volume/Python/Secondary/realestate_scraper/test_data'
-#     filename_1 = 'vivareal_ab.csv'
-#     filename_2 = 'vivareal_b.csv'
-
-#     reader_1 = CsvReader(filepath_1, filename_1)
-#     reader_2 = CsvReader(filepath_1, filename_2)
-
-#     # data_1 = reader_1.load_data()
-#     data_2 = reader_2.load_data()
-
-#     appender = CsvAppender(reader_1, avoid_duplicates=True) #, duplicate_columns=['address', 'title'])
-#     appender.write(data_2)
-
-#     print("EOL")
-
-
-
-
-
-# if __name__ == "__main__":
-#     filepath_1 = '/media/user/Novo volume/Python/Secondary/realestate_scraper/test_data'
-#     filename_1 = 'merge_a1.csv'
-#     filename_2 = 'merge_a2.csv'
-
-#     data_a1 = pd.read_csv(os.path.join(filepath_1, filename_1), index_col=0)
-#     data_a2 = pd.read_csv(os.path.join(filepath_1, filename_2), index_col=0)
-
-#     # merged = pd.merge(data_a2, data_a1, how='inner', left_on=['address', 'title'], right_on=['address', 'title'])
-
-#     # # Merge the DataFrames
-#     # df_merged = pd.merge(data_a1, data_a2, how='inner', left_index=True, right_index=True, suffixes=('', '_remove'))    
-#     # # remove the duplicate columns
-#     # df_merged.drop([i for i in df_merged.columns if 'remove' in i], axis=1, inplace=True)
-
-#     columns = ['address', 'title']
-#     bool_mask = np.all([~data_a2[col].isin(data_a1[col]) for col in columns], axis=0)
-#     new_entries = data_a2[bool_mask]
-
-#     data_a3 = pd.concat([data_a1, new_entries], axis=0)
-
-#     print("EOL")
+    print("EOL")
