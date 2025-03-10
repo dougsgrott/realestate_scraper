@@ -13,26 +13,22 @@ import random
 import logging
 import pprint
 
+from sqlalchemy.orm import sessionmaker
+
 import sys
-sys.path.append("/home/user/PythonProj/realestate_scraper/realestate_scraper")
+
+sys.path.append("/mnt/FE86DAF186DAAA03/Python/Secondary/realestate_scraper/realestate_scraper")
 from items import ImoveisSCCatalogItem, ImoveisSCStatusItem
 import settings
+
+from models import db_connect, ImoveisSCCatalog
+from planners import BasicSkipper
 
 
 class ImoveisSCCatalogSpider(Spider):
     name = 'imoveis_sc_catalog'
     handle_httpstatus_list = [404]
     redundancy_threshold = 30
-    # start_urls = ['https://www.imoveis-sc.com.br/regiao-serra/']
-    # start_urls = ['https://www.imoveis-sc.com.br/sao-bento-do-sul/comprar/casa']
-    # start_urls = ['https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa?ordenacao=recentes&page=1']  # LEVEL 1
-    start_urls = ['https://www.imoveis-sc.com.br/regiao-oeste/alugar/casa',
-                  'https://www.imoveis-sc.com.br/regiao-norte/']
-    # start_urls = [
-    #     'http://www.example.com/thisurlexists.html',
-    #     'http://www.example.com/thisurldoesnotexist.html',
-    #     'http://www.example.com/neitherdoesthisone.html'
-    # ]
 
     customLogger = logging.getLogger(__name__)
     customLogger.setLevel(logging.INFO)
@@ -50,7 +46,16 @@ class ImoveisSCCatalogSpider(Spider):
             'realestate_scraper.pipelines.DuplicatesImoveisSCCatalogPipeline': 100,
             'realestate_scraper.pipelines.SaveImoveisSCCatalogPipeline': 200,
         },
-    }    
+    }
+
+    def __init__(self, start_urls, close_due_to_redundancy=False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.start_urls = start_urls
+        self.close_due_to_redundancy = close_due_to_redundancy
+        self.page_items = []
+        self.duplicated_page_count = 0
+        self.skipping = False
+        self.planner = BasicSkipper(threshold=3, skip_n=10)
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
@@ -73,17 +78,30 @@ class ImoveisSCCatalogSpider(Spider):
 
     # 1. FOLLOWING LEVEL 1
     def parse(self, response):
-        for sel in response.xpath('//article[@class="imovel  "]'):
-            yield self.populate_catalog(sel, response.url)
-            
-        print(self.redundancy_threshold)
-        print(settings.redundancy_streak)
-        if (settings.redundancy_streak > self.redundancy_threshold):
-            reason = "Reason: more than {} consecutive redundant entries.".format(self.redundancy_threshold)
-            raise CloseSpider(reason=reason)
-
+        self.page_items = []
+        selector = '//article[@class="imovel  "]'
+        
+        new_page = self.planner.foo(response, selector, self.parse)
         time.sleep(random.randint(3,7))
-        yield self.paginate(response)
+
+        for sel in response.xpath(selector):
+            yield self.populate_catalog(sel, response.url)
+
+        print(f"REDUNDANCY - Threshold: {self.redundancy_threshold}, Streak: {settings.redundancy_streak}")
+
+        if self.close_due_to_redundancy:
+            if (settings.redundancy_streak > self.redundancy_threshold):
+                reason = "Reason: more than {} consecutive redundant entries.".format(self.redundancy_threshold)
+                raise CloseSpider(reason=reason)
+
+        # Resumer().get_attribute_from_selectors(response, selector)
+
+        # if self.close_due_to_redundancy:
+        #     if (settings.redundancy_streak > self.redundancy_threshold):
+        # self.foo(response, selector)
+        yield response.follow(new_page, self.parse)
+
+        # yield self.paginate(response)
 
     # 2. SCRAPING LEVEL 1
     def populate_catalog(self, selector, url):
@@ -99,8 +117,9 @@ class ImoveisSCCatalogSpider(Spider):
         catalog_loader.add_xpath('url', './/a[contains(@class, "btn-visualizar")]/@href')
         catalog_loader.add_value('url_is_scraped', 0)
         loaded_item = catalog_loader.load_item()
+        self.page_items.append(loaded_item)
         return loaded_item
-    
+
     # 3. PAGINATION LEVEL 1
     def paginate(self, response):
         next_page_url = response.xpath('//a[@class="next"]/@href').get()
@@ -110,6 +129,14 @@ class ImoveisSCCatalogSpider(Spider):
 
 if __name__ == '__main__':
     process = CrawlerProcess(get_project_settings())
-    process.crawl(ImoveisSCCatalogSpider)
+    process.crawl(ImoveisSCCatalogSpider, start_urls=['https://www.imoveis-sc.com.br/regiao-oeste/'])
     process.start()
-    
+
+    # Possible start_urls:
+    # https://www.imoveis-sc.com.br/joinville
+    # https://www.imoveis-sc.com.br/regiao-serra/
+    # https://www.imoveis-sc.com.br/florianopolis/
+    # https://www.imoveis-sc.com.br/sao-bento-do-sul/comprar/casa
+    # https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa?ordenacao=recentes&page=1
+    # https://www.imoveis-sc.com.br/regiao-oeste/alugar/casa
+    # https://www.imoveis-sc.com.br/regiao-norte/

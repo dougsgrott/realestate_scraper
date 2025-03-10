@@ -6,6 +6,7 @@
 #     https://docs.scrapy.org/en/latest/topics/settings.html
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+import os
 
 redundancy = 0
 redundancy_streak = 0
@@ -26,19 +27,19 @@ ROBOTSTXT_OBEY = False
 DOWNLOADER_MIDDLEWARES = {
         'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
         'scrapy.downloadermiddlewares.retry.RetryMiddleware': None,
-        'scrapy_fake_useragent.middleware.RandomUserAgentMiddleware': 400,
-        'scrapy_fake_useragent.middleware.RetryUserAgentMiddleware': 401,
+        # 'scrapy_fake_useragent.middleware.RandomUserAgentMiddleware': 400,
+        # 'scrapy_fake_useragent.middleware.RetryUserAgentMiddleware': 401,
     }
 
 
-FAKEUSERAGENT_PROVIDERS = [
-    'scrapy_fake_useragent.providers.FakeUserAgentProvider',  # this is the first provider we'll try
-    'scrapy_fake_useragent.providers.FakerProvider',  # if FakeUserAgentProvider fails, we'll use faker to generate a user-agent string for us
-    'scrapy_fake_useragent.providers.FixedUserAgentProvider',  # fall back to USER_AGENT value
-]
+# FAKEUSERAGENT_PROVIDERS = [
+#     'scrapy_fake_useragent.providers.FakeUserAgentProvider',  # this is the first provider we'll try
+#     'scrapy_fake_useragent.providers.FakerProvider',  # if FakeUserAgentProvider fails, we'll use faker to generate a user-agent string for us
+#     'scrapy_fake_useragent.providers.FixedUserAgentProvider',  # fall back to USER_AGENT value
+# ]
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
-#CONCURRENT_REQUESTS = 32
+CONCURRENT_REQUESTS = 8
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
@@ -85,8 +86,9 @@ FAKEUSERAGENT_PROVIDERS = [
 #    'realestate_scraper.pipelines.DuplicatesImoveisSCCatalogPipeline': 100,
 # }
 
-# CONNECTION_STRING = 'sqlite:////home/user/PythonProj/realestate_scraper/imoveis_sc_catalog.db'
-CONNECTION_STRING = 'sqlite:///vivareal_catalog.db'
+file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+CONNECTION_STRING = 'sqlite:///' + os.path.join(file_path, os.path.join('scraped_data', 'imoveis_sc.sqlite'))
+# CONNECTION_STRING = 'sqlite:///imoveis_sc.db'
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
@@ -109,9 +111,9 @@ CONNECTION_STRING = 'sqlite:///vivareal_catalog.db'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
 
-DOWNLOAD_HANDLERS = {
-    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-}
+# DOWNLOAD_HANDLERS = {
+#     "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+#     "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+# }
 
 # TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"

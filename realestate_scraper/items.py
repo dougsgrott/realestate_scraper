@@ -8,53 +8,59 @@ from itemloaders.processors import Compose, TakeFirst, Join, MapCompose
 import re
 from w3lib.html import remove_tags
 from bs4 import BeautifulSoup
-
-def cleanText(text):
-    processed_text = []
-    for subtext in text:
-        subtext = subtext.replace('\n', '').replace('\t', '')
-        subtext = subtext.lstrip()
-        subtext = subtext.rstrip()
-        if subtext == '':
-            continue
-        processed_text.append(subtext)
-
-    return processed_text
+from typing import List
 
 
-def cleanAndBreakText(text):
-    for subtext in text:
-        subtext = subtext.replace('\n', '').replace('\t', '')
-        subtext = re.split('-| - |,|, ', subtext)
-        subtext = [string.lstrip() for string in subtext]
-        subtext = [string.rstrip() for string in subtext]
-    return text
+def strip_strings(input: List[str]):
+    # Strip leading and trailing whitespace/newlines
+    return [item.strip() for item in input]
 
-def getLocal(text):
-    substring = text.split('/')[3]
-    substring = substring.replace('-', ' ')
-    return substring
+def remove_empty_strings(input: List[str]):
+    # Remove empty or insignificant strings
+    return [item for item in input if item]
 
+def normalize_spacing_strings(input: List[str]):
+    # Normalize spacing
+    return [re.sub(r'\s+', ' ', item) for item in input]
 
-def getBusinessType(text):
-    substring = text.split('/')[4]
-    substring = substring.replace('-', ' ')
-    return substring
+def standardize_numeric_strings(input: List[str]):
+    # Standardize numeric values (Ensure consistent format for price)
+    # Keeping as a string, but properly formatted
+    return [item.replace('R$ ', 'R$') for item in input]
 
 
-def getPropertyType(text):
-    substring = text.split('/')[5]
-    substring = substring.replace('-', ' ')
-    return substring
+# def cleanText(text):
+#     processed_text = []
+#     for subtext in text:
+#         subtext = (subtext
+#                    .replace('\\n', '')
+#                    .replace('\n', '')
+#                    .replace('\t', ''))
+#         subtext = subtext.lstrip()
+#         subtext = subtext.rstrip()
+#         if subtext == '':
+#             continue
+#         processed_text.append(subtext)
+
+#     return processed_text
 
 
-def dropDuplicate(collected_data):
-    return list(set(collected_data))
+# def cleanAndBreakText(text):
+#     for subtext in text:
+#         subtext = subtext.replace('\n', '').replace('\t', '')
+#         subtext = re.split('-| - |,|, ', subtext)
+#         subtext = [string.lstrip() for string in subtext]
+#         subtext = [string.rstrip() for string in subtext]
+#     return text
 
 
-def getCidade(collected_data):
-    cidade = collected_data[0].split(',')[-1].lstrip()
-    return cidade
+# def dropDuplicate(collected_data):
+#     return list(set(collected_data))
+
+
+# def getCidade(collected_data):
+#     cidade = collected_data[0].split(',')[-1].lstrip()
+#     return cidade
 
 # ####################################################
 
@@ -76,6 +82,19 @@ def get_details_text(selector_list):
         text_list.append(text)
     concat_text = '<br>'.join(text_list)
     return concat_text
+
+
+def get_text_beautifulsoup(selector_list):
+    text_list = []
+    for html_string in selector_list:
+        soup = BeautifulSoup(html_string, 'html.parser')
+        text = soup.get_text()
+        text_list.append(text)
+    return text_list
+
+
+def replace_str_list(selector_list, old_str, new_str):
+    return [s.replace(old_str, new_str) for s in selector_list]
 
 
 def parse_details_text(input_string):
@@ -161,53 +180,52 @@ def parse_values_text(input_string):
     return parsed_string
 
 
-def parse_target_url(url_list):
-    url = url_list[0]
-    if url.startswith('/'):
-        url = 'https://www.vivareal.com.br' + url
-    return url
+def convert_to_str(input):
+    return str(input)
 
 
-class VivaRealCatalogItem(scrapy.Item):
-    type = scrapy.Field()
-    address = scrapy.Field(input_processor=parse_address)
-    title = scrapy.Field(input_processor=parse_title)
-    details = scrapy.Field(input_processor=Compose(get_details_text, parse_details_text))
-    amenities = scrapy.Field(input_processor=Compose(get_amenities_text, parse_amenities_text))
-    values = scrapy.Field(input_processor=Compose(get_values_text, parse_values_text))
-    target_url = scrapy.Field(input_processor=parse_target_url)
-    catalog_scraped_date = scrapy.Field()
-    is_target_scraped = scrapy.Field()
-
-
-class ImoveisSCPropertyItem(scrapy.Item):
-    # id = scrapy.Field(output_processor=TakeFirst())
-    title = scrapy.Field(input_processor=cleanText, output_processor=TakeFirst())
-    code = scrapy.Field(input_processor=cleanText, output_processor=TakeFirst())
-    price = scrapy.Field(input_processor=cleanText)
-    caracteristicas_simples = scrapy.Field(input_processor=MapCompose(remove_tags))
-    description = scrapy.Field(input_processor=Compose(cleanText, Join(separator='<br>')), output_processor=TakeFirst())
-    caracteristicas_detalhes = scrapy.Field()
-    address = scrapy.Field(input_processor=cleanText, output_processor=TakeFirst())
-    # cidade = scrapy.Field(input_processor=cleanText, output_processor=getCidade)
-    cidade = scrapy.Field(output_processor=TakeFirst())
-    advertiser = scrapy.Field(output_processor=TakeFirst())
-    advertiser_info = scrapy.Field(input_processor=MapCompose(remove_tags), output_processor=TakeFirst())
-    nav_headcrumbs = scrapy.Field()
-    local = scrapy.Field(input_processor=MapCompose(getLocal), output_processor=TakeFirst())
-    business_type = scrapy.Field(input_processor=MapCompose(getBusinessType), output_processor=TakeFirst())
-    property_type = scrapy.Field(input_processor=MapCompose(getPropertyType), output_processor=TakeFirst())
-    url = scrapy.Field(output_processor=TakeFirst())
-    scraped_date = scrapy.Field(output_processor=TakeFirst())
+def process_headcrumbs(input):
+    return ' -> '.join(input)
 
 
 class ImoveisSCCatalogItem(scrapy.Item):
+
+    @staticmethod
+    def process_type(input):
+        return input
+
+    @staticmethod
+    def process_title(input):
+        cleaned_data = strip_strings(input)
+        cleaned_data = normalize_spacing_strings(cleaned_data)
+        return cleaned_data
+
+    @staticmethod
+    def process_code(input):
+        return input
+
+    @staticmethod
+    def process_local(input):
+        return input
+
+    @staticmethod
+    def process_description(input):
+        cleaned_data = normalize_spacing_strings(input)
+        cleaned_data = '<br>'.join(cleaned_data)
+        return cleaned_data
+
+    @staticmethod
+    def process_region(input):
+        substring = input.split('/')[3].split('?')[0]
+        substring = substring.replace('-', ' ')
+        return substring
+
     type = scrapy.Field()
     title = scrapy.Field()
     code = scrapy.Field()
     local = scrapy.Field()
-    description = scrapy.Field(input_processor=cleanText)
-    region = scrapy.Field(input_processor=MapCompose(getLocal))
+    description = scrapy.Field(input_processor=process_description)
+    region = scrapy.Field(input_processor=MapCompose(process_region))
     scraped_date = scrapy.Field()
     url = scrapy.Field()
     url_is_scraped = scrapy.Field()
@@ -221,3 +239,111 @@ class ImoveisSCStatusItem(scrapy.Item):
     url = scrapy.Field()
     is_scraped = scrapy.Field()
     scraped_date = scrapy.Field()
+
+
+class ImoveisSCPropertyItem(scrapy.Item):
+
+    @staticmethod
+    def process_title(input):
+        cleaned_data = strip_strings(input)
+        cleaned_data = normalize_spacing_strings(cleaned_data)
+        return cleaned_data
+
+    @staticmethod
+    def process_code(input):
+        return input
+
+    @staticmethod
+    def process_price(input):
+        cleaned_data = strip_strings(input)
+        cleaned_data = normalize_spacing_strings(cleaned_data)
+        cleaned_data = remove_empty_strings(cleaned_data)
+        return '<br>'.join(cleaned_data)
+
+    @staticmethod
+    def process_caracteristicas_simples(input):
+        return '\n'.join([convert_to_str(remove_tags(i)) for i in input])
+
+    @staticmethod
+    def process_description(input):
+        cleaned_data = normalize_spacing_strings(input)
+        cleaned_data = '<br>'.join(cleaned_data)
+        return cleaned_data
+
+    @staticmethod
+    def process_caracteristicas_detalhes(input):
+        cleaned_data = get_text_beautifulsoup(input)
+        cleaned_data = strip_strings(cleaned_data)
+        cleaned_data = replace_str_list(cleaned_data, '\n\n', ': ')
+        cleaned_data = '<br>'.join(cleaned_data)
+        return cleaned_data
+
+    @staticmethod
+    def process_address(input):
+        cleaned_data = strip_strings(input)
+        cleaned_data = normalize_spacing_strings(cleaned_data)
+        return cleaned_data
+
+    @staticmethod
+    def process_cidade(input):
+        return input
+
+    @staticmethod
+    def process_advertiser(input):
+        return input
+
+    @staticmethod
+    def process_advertiser_info(input):
+        return remove_tags(input[0])
+
+    @staticmethod
+    def process_nav_headcrumbs(input):
+        return process_headcrumbs(input)
+
+    @staticmethod
+    def process_local(input):
+        substring = input[0].split('/')[3]
+        substring = substring.replace('-', ' ')
+        return substring
+
+    @staticmethod
+    def process_business_type(input):
+        substring = input[0].split('/')[4]
+        substring = substring.replace('-', ' ')
+        return substring
+
+    @staticmethod
+    def process_property_type(input):
+        substring = input[0].split('/')[5]
+        substring = substring.replace('-', ' ')
+        return substring
+
+    @staticmethod
+    def process_url(input):
+        return input
+
+    @staticmethod
+    def process_is_scraped(input):
+        return input
+
+    @staticmethod
+    def process_scraped_date(input):
+        return input
+
+    title = scrapy.Field(input_processor=process_title, output_processor=TakeFirst())
+    code = scrapy.Field(input_processor=process_code, output_processor=TakeFirst())
+    price = scrapy.Field(input_processor=process_price, output_processor=TakeFirst())
+    caracteristicas_simples = scrapy.Field(input_processor=process_caracteristicas_simples, output_processor=TakeFirst())
+    description = scrapy.Field(input_processor=process_description, output_processor=TakeFirst())
+    caracteristicas_detalhes = scrapy.Field(input_processor=process_caracteristicas_detalhes, output_processor=TakeFirst())
+    address = scrapy.Field(input_processor=process_address, output_processor=TakeFirst())
+    cidade = scrapy.Field(input_processor=process_cidade, output_processor=TakeFirst())
+    advertiser = scrapy.Field(input_processor=process_advertiser, output_processor=TakeFirst())
+    advertiser_info = scrapy.Field(input_processor=process_advertiser_info, output_processor=TakeFirst())
+    nav_headcrumbs = scrapy.Field(input_processor=process_nav_headcrumbs, output_processor=TakeFirst())
+    local = scrapy.Field(input_processor=process_local, output_processor=TakeFirst())
+    business_type = scrapy.Field(input_processor=process_business_type, output_processor=TakeFirst())
+    property_type = scrapy.Field(input_processor=process_property_type, output_processor=TakeFirst())
+    url = scrapy.Field(input_processor=process_url, output_processor=TakeFirst())
+    is_scraped = scrapy.Field(input_processor=process_is_scraped, output_processor=TakeFirst())
+    scraped_date = scrapy.Field(input_processor=process_scraped_date, output_processor=TakeFirst())
