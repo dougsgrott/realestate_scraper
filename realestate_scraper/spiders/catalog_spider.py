@@ -16,6 +16,7 @@ import pprint
 from sqlalchemy.orm import sessionmaker
 
 import sys
+import os
 
 sys.path.append("/mnt/FE86DAF186DAAA03/Python/Secondary/realestate_scraper/realestate_scraper")
 from items import ImoveisSCCatalogItem, ImoveisSCStatusItem
@@ -30,14 +31,19 @@ class ImoveisSCCatalogSpider(Spider):
     handle_httpstatus_list = [404]
     redundancy_threshold = 30
 
+    log_directory = 'logs'
+    os.makedirs(log_directory, exist_ok=True)
+    log_file_path = os.path.join(log_directory, 'imoveis_sc_catalog_spider.log')
     customLogger = logging.getLogger(__name__)
     customLogger.setLevel(logging.INFO)
-    file_handler = logging.FileHandler('logfile.txt')
+    file_handler = logging.FileHandler(log_file_path)
     formatter = logging.Formatter('[%(name)s] %(levelname)s: %(message)s')
     file_handler.setFormatter(formatter)
     customLogger.addHandler(file_handler)
 
     custom_settings = {
+        # 'LOG_FILE': 'imoveis_sc_catalog_spider.log',
+        # 'LOG_LEVEL': 'INFO',
         'AUTOTHROTTLE_ENABLED': True,
         'AUTOTHROTTLE_DEBUG': True,
         'DOWNLOAD_DELAY': 3,
@@ -65,7 +71,7 @@ class ImoveisSCCatalogSpider(Spider):
         return spider
 
     def handle_spider_opened(self):
-        self.customLogger.info("Spider Opened")
+        self.customLogger.info(f"Spider opened: {self.name}")
 
     def log_stats(self, stats):
         self.customLogger.info("Scraping Stats:\n" + pprint.pformat(stats))
@@ -74,7 +80,7 @@ class ImoveisSCCatalogSpider(Spider):
         print("Reason: {}".format(reason))
         stats = self.crawler.stats.get_stats()
         self.log_stats(stats)
-        self.customLogger.info("Spider Closed. {}".format(reason))
+        self.customLogger.info(f"Spider Closed. {reason}")
 
     # 1. FOLLOWING LEVEL 1
     def parse(self, response):
@@ -87,11 +93,14 @@ class ImoveisSCCatalogSpider(Spider):
         for sel in response.xpath(selector):
             yield self.populate_catalog(sel, response.url)
 
-        print(f"REDUNDANCY - Threshold: {self.redundancy_threshold}, Streak: {settings.redundancy_streak}")
+        # print(f"REDUNDANCY - Threshold: {self.redundancy_threshold}, Streak: {settings.redundancy_streak}")
+        self.customLogger.info("REDUNDANCY - Threshold: %d, Streak: %d",
+                         self.redundancy_threshold, settings.redundancy_streak)
 
         if self.close_due_to_redundancy:
             if (settings.redundancy_streak > self.redundancy_threshold):
                 reason = "Reason: more than {} consecutive redundant entries.".format(self.redundancy_threshold)
+                self.customLogger.warning("Closing spider due to redundancy: %s", reason)
                 raise CloseSpider(reason=reason)
 
         # Resumer().get_attribute_from_selectors(response, selector)
@@ -99,6 +108,8 @@ class ImoveisSCCatalogSpider(Spider):
         # if self.close_due_to_redundancy:
         #     if (settings.redundancy_streak > self.redundancy_threshold):
         # self.foo(response, selector)
+        if new_page == None:
+            raise CloseSpider()
         yield response.follow(new_page, self.parse)
 
         # yield self.paginate(response)
@@ -129,7 +140,7 @@ class ImoveisSCCatalogSpider(Spider):
 
 if __name__ == '__main__':
     process = CrawlerProcess(get_project_settings())
-    process.crawl(ImoveisSCCatalogSpider, start_urls=['https://www.imoveis-sc.com.br/regiao-oeste/'])
+    process.crawl(ImoveisSCCatalogSpider, start_urls=['https://www.imoveis-sc.com.br/regiao-serra/'])
     process.start()
 
     # Possible start_urls:
@@ -140,3 +151,4 @@ if __name__ == '__main__':
     # https://www.imoveis-sc.com.br/governador-celso-ramos/comprar/casa?ordenacao=recentes&page=1
     # https://www.imoveis-sc.com.br/regiao-oeste/alugar/casa
     # https://www.imoveis-sc.com.br/regiao-norte/
+    # https://www.imoveis-sc.com.br/regiao-oeste/

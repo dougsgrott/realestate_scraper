@@ -23,13 +23,13 @@ from scrapy.exporters import BaseItemExporter
 import settings
 
 
-logger = logging.getLogger(__name__)  # Gets or creates a logger
-logger.setLevel(logging.INFO)  # set log level
-# define file handler and set formatter
-file_handler = logging.FileHandler('logfile.txt')
-formatter    = logging.Formatter('[%(name)s] %(levelname)s: %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)  # add file handler to logger
+# logger = logging.getLogger(__name__)  # Gets or creates a logger
+# logger.setLevel(logging.INFO)  # set log level
+# # define file handler and set formatter
+# file_handler = logging.FileHandler('logfile.txt')
+# formatter    = logging.Formatter('[%(name)s] %(levelname)s: %(message)s')
+# file_handler.setFormatter(formatter)
+# logger.addHandler(file_handler)  # add file handler to logger
 
 
 def not_set(string):
