@@ -51,6 +51,8 @@ class ImoveisSCPropertySpider(Spider):
             # 'realestate_scraper.pipelines.UpdateCatalogDatabasePipeline': 200,
             # 'realestate_scraper.pipelines.MongoDBPipeline': 100,
             'realestate_scraper.pipelines.SaveImoveisSCPropertyPipeline': 100,
+            'realestate_scraper.pipelines.SaveCaracteristicasSimplesPipeline': 110,
+            'realestate_scraper.pipelines.SaveCaracteristicasDetalhesPipeline': 120,
         }
     }
 

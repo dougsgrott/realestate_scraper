@@ -7,7 +7,7 @@
 # useful for handling different item types with a single interface
 from itemadapter import ItemAdapter
 from sqlalchemy.orm import sessionmaker, Session
-from models import ImoveisSCCatalog, ImoveisSCProperty, create_table, db_connect
+from models import ImoveisSCCatalog, ImoveisSCProperty, CaracteristicasSimples, CaracteristicasDetalhes, create_table, db_connect
 import json
 from itemadapter import ItemAdapter
 from datetime import datetime
@@ -392,8 +392,13 @@ class SaveImoveisSCPropertyPipeline(object):
         """
         session = self.factory()
         entry = ImoveisSCProperty()
-        for k in item.keys():
+        fields = ["title", "code", "price", "description", "address", "cidade", "advertiser", "advertiser_info", "nav_headcrumbs", "local", "business_type", "property_type", "url", "scraped_date"]
+        for k in fields:
             setattr(entry, k, item[k])
+        self.process_entry(entry, session)
+        return item
+
+    def process_entry(self, entry, session):
         try:
             print('Entry added')
             session.add(entry)
@@ -406,7 +411,89 @@ class SaveImoveisSCPropertyPipeline(object):
             raise
         finally:
             session.close()
+        return None
+
+
+class SaveCaracteristicasSimplesPipeline(object):
+    def __init__(self):
+        """
+        Initializes database connection and sessionmaker
+        Creates tables
+        """
+        engine = db_connect()
+        create_table(engine)
+        self.factory = sessionmaker(bind=engine)
+
+    def process_item(self, item, spider):
+        """
+        Save real estate index in the database
+        This method is called for every item pipeline component
+        """
+        session = self.factory()
+        for k, v in item['caracteristicas_simples'].items():
+            entry = CaracteristicasSimples()
+            entry.title = item['title']
+            entry.code = item['code']
+            entry.key = k
+            entry.value = v
+            self.process_entry(entry, session)
         return item
+
+    def process_entry(self, entry, session):
+        try:
+            print('Entry added')
+            session.add(entry)
+            session.commit()
+            settings.saved = settings.saved + 1
+            settings.redundancy_streak = 0
+        except:
+            print('rollback')
+            session.rollback()
+            raise
+        finally:
+            session.close()
+        return None
+
+
+class SaveCaracteristicasDetalhesPipeline(object):
+    def __init__(self):
+        """
+        Initializes database connection and sessionmaker
+        Creates tables
+        """
+        engine = db_connect()
+        create_table(engine)
+        self.factory = sessionmaker(bind=engine)
+
+    def process_item(self, item, spider):
+        """
+        Save real estate index in the database
+        This method is called for every item pipeline component
+        """
+        session = self.factory()
+        for k, v in item['caracteristicas_detalhes'].items():
+            entry = CaracteristicasDetalhes()
+            entry.title = item['title']
+            entry.code = item['code']
+            entry.key = k
+            entry.value = v
+            self.process_entry(entry, session)
+        return item
+
+    def process_entry(self, entry, session):
+        try:
+            print('Entry added')
+            session.add(entry)
+            session.commit()
+            settings.saved = settings.saved + 1
+            settings.redundancy_streak = 0
+        except:
+            print('rollback')
+            session.rollback()
+            raise
+        finally:
+            session.close()
+        return None
 
 
 class LoggerImoveisSCCatalogPipeline:
