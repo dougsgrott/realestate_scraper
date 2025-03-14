@@ -29,41 +29,6 @@ def standardize_numeric_strings(input: List[str]):
     return [item.replace('R$ ', 'R$') for item in input]
 
 
-# def cleanText(text):
-#     processed_text = []
-#     for subtext in text:
-#         subtext = (subtext
-#                    .replace('\\n', '')
-#                    .replace('\n', '')
-#                    .replace('\t', ''))
-#         subtext = subtext.lstrip()
-#         subtext = subtext.rstrip()
-#         if subtext == '':
-#             continue
-#         processed_text.append(subtext)
-
-#     return processed_text
-
-
-# def cleanAndBreakText(text):
-#     for subtext in text:
-#         subtext = subtext.replace('\n', '').replace('\t', '')
-#         subtext = re.split('-| - |,|, ', subtext)
-#         subtext = [string.lstrip() for string in subtext]
-#         subtext = [string.rstrip() for string in subtext]
-#     return text
-
-
-# def dropDuplicate(collected_data):
-#     return list(set(collected_data))
-
-
-# def getCidade(collected_data):
-#     cidade = collected_data[0].split(',')[-1].lstrip()
-#     return cidade
-
-# ####################################################
-
 def parse_title(input_list):
     input_string = ''.join(input_list)
     return input_string.strip()
@@ -262,6 +227,9 @@ class ImoveisSCPropertyItem(scrapy.Item):
 
     @staticmethod
     def process_caracteristicas_simples(input):
+        if len(input) == 0:
+            return {None: None}
+
         parsed_dict = {}
         for i in input:
             soup = BeautifulSoup(i, "html.parser")
@@ -285,6 +253,9 @@ class ImoveisSCPropertyItem(scrapy.Item):
 
     @staticmethod
     def process_caracteristicas_detalhes(input):
+        if len(input) == 0:
+            return {None: None}
+
         parsed_dict = {}
         for i in input:
             soup = BeautifulSoup(i, "html.parser")
