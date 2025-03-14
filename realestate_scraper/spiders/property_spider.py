@@ -64,11 +64,14 @@ class ImoveisSCPropertySpider(Spider):
         Session = sessionmaker(bind=engine)
 
         with Session() as session:
-            rows_not_scraped = session.query(ImoveisSCCatalog) \
-                                    .filter(
-                                        ImoveisSCCatalog.url_is_scraped == 0,
-                                        ImoveisSCCatalog.region == self.region
-                                    ).all()
+            if self.region == None:
+                rows_not_scraped = session.query(ImoveisSCCatalog).filter(ImoveisSCCatalog.url_is_scraped == 0).all()
+            else:
+                rows_not_scraped = session.query(ImoveisSCCatalog) \
+                                        .filter(
+                                            ImoveisSCCatalog.url_is_scraped == 0,
+                                            ImoveisSCCatalog.region == self.region
+                                        ).all()
 
             for row in rows_not_scraped:
                 time.sleep(random.randint(3,7))
@@ -85,7 +88,7 @@ class ImoveisSCPropertySpider(Spider):
 
         # 'top' Section data
         item_loader.add_xpath('price', '//*[contains(@class, "visualizar-preco")]/descendant::*/text()')
-        item_loader.add_xpath('caracteristicas_simples', '//ol[@class="visualizar-info-opcoes"]/li/*[@class="valores"]')
+        item_loader.add_xpath('caracteristicas_simples', '//ol[@class="visualizar-info-opcoes"]/li') #/*[@class="valores"]
 
         # 'descricao' Section data
         item_loader.add_xpath('description', '//*[@class="visualizar-descricao"]/descendant::*/text()')
@@ -131,7 +134,7 @@ class ImoveisSCPropertySpider(Spider):
             'code': [response.xpath('//*[@class="visualizar-info-codigo"]/text()').extract(),
                      response.xpath('//*[@class="visualizar-header-extra"]/strong/text()').extract()],
             'price': response.xpath('//*[contains(@class, "visualizar-preco")]/descendant::*/text()').extract(),
-            'caracteristicas_simples': response.xpath('//ol[@class="visualizar-info-opcoes"]/li/*[@class="valores"]').extract(),
+            'caracteristicas_simples': response.xpath('//ol[@class="visualizar-info-opcoes"]/li').extract(), #/*[@class="valores"]
             'description': response.xpath('//*[@class="visualizar-descricao"]/descendant::*/text()').extract(),
             'caracteristicas_detalhes': response.xpath('//*[@class="visualizacao-caracteristica-lista"]/li').extract(),
             'address': response.xpath('//*[@class="visualizar-endereco-texto"]/text()').extract(),
@@ -153,6 +156,5 @@ class ImoveisSCPropertySpider(Spider):
 
 if __name__ == "__main__":
     process = CrawlerProcess(get_project_settings())
-    process.crawl(ImoveisSCPropertySpider, region="regiao oeste")
+    process.crawl(ImoveisSCPropertySpider) #, region="regiao oeste"
     process.start()
-
