@@ -262,7 +262,20 @@ class ImoveisSCPropertyItem(scrapy.Item):
 
     @staticmethod
     def process_caracteristicas_simples(input):
-        return '\n'.join([convert_to_str(remove_tags(i)) for i in input])
+        parsed_dict = {}
+        for i in input:
+            soup = BeautifulSoup(i, "html.parser")
+            key = soup.find("i", class_=lambda x: x and "mdi" in x)
+            key = " ".join(key["class"]) if key else None
+            match = re.search(r"mdi mdi-(.*?) mdi-30px", key)
+            key = match.group(1) if match else None
+
+            value = remove_tags(i)
+            value = convert_to_str(value)
+            value = strip_strings([value])[0]
+
+            parsed_dict[key] = value
+        return parsed_dict
 
     @staticmethod
     def process_description(input):
@@ -272,11 +285,19 @@ class ImoveisSCPropertyItem(scrapy.Item):
 
     @staticmethod
     def process_caracteristicas_detalhes(input):
-        cleaned_data = get_text_beautifulsoup(input)
-        cleaned_data = strip_strings(cleaned_data)
-        cleaned_data = replace_str_list(cleaned_data, '\n\n', ': ')
-        cleaned_data = '<br>'.join(cleaned_data)
-        return cleaned_data
+        parsed_dict = {}
+        for i in input:
+            soup = BeautifulSoup(i, "html.parser")
+            key = soup.find("div", class_=lambda x: x and "subtitle" in x)
+            key = key.get_text() if key else None
+            key = strip_strings([key])[0]
+
+            match = re.search(r"<li>(.*?)</li>", i)
+            value = match.group(1) if match else None
+            value = strip_strings([value])[0]
+
+            parsed_dict[key] = value
+        return parsed_dict
 
     @staticmethod
     def process_address(input):
