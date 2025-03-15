@@ -7,7 +7,7 @@
 # useful for handling different item types with a single interface
 from itemadapter import ItemAdapter
 from sqlalchemy.orm import sessionmaker, Session
-from models import ImoveisSCCatalog, ImoveisSCProperty, CaracteristicasSimples, CaracteristicasDetalhes, create_table, db_connect
+from models import CatalogModel, PropertyModel, BasicInfoModel, DetailsModel, create_table, db_connect
 import json
 from itemadapter import ItemAdapter
 from datetime import datetime
@@ -320,7 +320,7 @@ class MongoPipeline:
         return item
 
 
-class DuplicatesImoveisSCCatalogPipeline(object):
+class DuplicatesCatalogPipeline(object):
     def __init__(self):
         """
         Initializes database connection and sessionmaker
@@ -332,7 +332,7 @@ class DuplicatesImoveisSCCatalogPipeline(object):
 
     def process_item(self, item, spider):
         session = self.factory()
-        exist_title = session.query(ImoveisSCCatalog).filter_by(title=item["title"]).first()
+        exist_title = session.query(CatalogModel).filter_by(title=item["title"]).first()
         if (exist_title is not None):
             settings.redundancy = settings.redundancy + 1
             settings.redundancy_streak = settings.redundancy_streak + 1
@@ -341,7 +341,7 @@ class DuplicatesImoveisSCCatalogPipeline(object):
             return item
 
 
-class SaveImoveisSCCatalogPipeline(object):
+class SaveCatalogPipeline(object):
     def __init__(self):
         """
         Initializes database connection and sessionmaker
@@ -357,7 +357,7 @@ class SaveImoveisSCCatalogPipeline(object):
         This method is called for every item pipeline component
         """
         session = self.factory()
-        entry = ImoveisSCCatalog()
+        entry = CatalogModel()
         for k in item.keys():
             setattr(entry, k, item[k])
         try:
@@ -375,7 +375,7 @@ class SaveImoveisSCCatalogPipeline(object):
         return item
 
 
-class SaveImoveisSCPropertyPipeline(object):
+class SavePropertyPipeline(object):
     def __init__(self):
         """
         Initializes database connection and sessionmaker
@@ -391,7 +391,7 @@ class SaveImoveisSCPropertyPipeline(object):
         This method is called for every item pipeline component
         """
         session = self.factory()
-        entry = ImoveisSCProperty()
+        entry = PropertyModel()
         fields = ["title", "code", "price", "description", "address", "cidade", "advertiser", "advertiser_info", "nav_headcrumbs", "local", "business_type", "property_type", "url", "scraped_date"]
         for k in fields:
             setattr(entry, k, item[k])
@@ -414,7 +414,7 @@ class SaveImoveisSCPropertyPipeline(object):
         return None
 
 
-class SaveCaracteristicasSimplesPipeline(object):
+class SaveBasicInfoPipeline(object):
     def __init__(self):
         """
         Initializes database connection and sessionmaker
@@ -431,7 +431,7 @@ class SaveCaracteristicasSimplesPipeline(object):
         """
         session = self.factory()
         for k, v in item['caracteristicas_simples'].items():
-            entry = CaracteristicasSimples()
+            entry = BasicInfoModel()
             entry.title = item['title']
             entry.code = item['code']
             entry.key = k
@@ -455,7 +455,7 @@ class SaveCaracteristicasSimplesPipeline(object):
         return None
 
 
-class SaveCaracteristicasDetalhesPipeline(object):
+class SaveDetailsPipeline(object):
     def __init__(self):
         """
         Initializes database connection and sessionmaker
@@ -472,7 +472,7 @@ class SaveCaracteristicasDetalhesPipeline(object):
         """
         session = self.factory()
         for k, v in item['caracteristicas_detalhes'].items():
-            entry = CaracteristicasDetalhes()
+            entry = DetailsModel()
             entry.title = item['title']
             entry.code = item['code']
             entry.key = k

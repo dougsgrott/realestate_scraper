@@ -19,14 +19,14 @@ import sys
 import os
 
 sys.path.append("/mnt/FE86DAF186DAAA03/Python/Secondary/realestate_scraper/realestate_scraper")
-from items import ImoveisSCCatalogItem, ImoveisSCStatusItem
+from items import CatalogItem, StatusItem
 import settings
 
-from models import db_connect, ImoveisSCCatalog
+from models import db_connect, CatalogModel
 from planners import BasicSkipper
 
 
-class ImoveisSCCatalogSpider(Spider):
+class CatalogSpider(Spider):
     name = 'imoveis_sc_catalog'
     handle_httpstatus_list = [404]
     redundancy_threshold = 30
@@ -49,8 +49,8 @@ class ImoveisSCCatalogSpider(Spider):
         'DOWNLOAD_DELAY': 3,
         'ROBOTSTXT_OBEY': False,
         'ITEM_PIPELINES': {
-            'realestate_scraper.pipelines.DuplicatesImoveisSCCatalogPipeline': 100,
-            'realestate_scraper.pipelines.SaveImoveisSCCatalogPipeline': 200,
+            'realestate_scraper.pipelines.DuplicatesCatalogPipeline': 100,
+            'realestate_scraper.pipelines.SaveCatalogPipeline': 200,
         },
     }
 
@@ -65,7 +65,7 @@ class ImoveisSCCatalogSpider(Spider):
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
-        spider = super(ImoveisSCCatalogSpider, cls).from_crawler(crawler, *args, **kwargs)
+        spider = super(CatalogSpider, cls).from_crawler(crawler, *args, **kwargs)
         crawler.signals.connect(spider.handle_spider_closed, signals.spider_closed)
         crawler.signals.connect(spider.handle_spider_opened, signals.spider_opened)
         return spider
@@ -116,7 +116,7 @@ class ImoveisSCCatalogSpider(Spider):
 
     # 2. SCRAPING LEVEL 1
     def populate_catalog(self, selector, url):
-        catalog_loader = ItemLoader(item=ImoveisSCCatalogItem(), selector=selector)
+        catalog_loader = ItemLoader(item=CatalogItem(), selector=selector)
         catalog_loader.default_output_processor = TakeFirst()
         catalog_loader.add_value('type', "catalog")
         catalog_loader.add_xpath('title', './/h2[@class="imovel-titulo"]/a/meta[@itemprop="name"]/@content')
@@ -140,7 +140,7 @@ class ImoveisSCCatalogSpider(Spider):
 
 if __name__ == '__main__':
     process = CrawlerProcess(get_project_settings())
-    process.crawl(ImoveisSCCatalogSpider, start_urls=['https://www.imoveis-sc.com.br/regiao-serra/'])
+    process.crawl(CatalogSpider, start_urls=['https://www.imoveis-sc.com.br/regiao-serra/'])
     process.start()
 
     # Possible start_urls:

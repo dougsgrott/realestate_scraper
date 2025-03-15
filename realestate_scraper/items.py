@@ -153,7 +153,7 @@ def process_headcrumbs(input):
     return ' -> '.join(input)
 
 
-class ImoveisSCCatalogItem(scrapy.Item):
+class CatalogItem(scrapy.Item):
 
     @staticmethod
     def process_type(input):
@@ -197,7 +197,7 @@ class ImoveisSCCatalogItem(scrapy.Item):
     url_scraped_date = scrapy.Field()
 
 
-class ImoveisSCStatusItem(scrapy.Item):
+class StatusItem(scrapy.Item):
     type = scrapy.Field()
     title = scrapy.Field()
     code = scrapy.Field()
@@ -206,7 +206,7 @@ class ImoveisSCStatusItem(scrapy.Item):
     scraped_date = scrapy.Field()
 
 
-class ImoveisSCPropertyItem(scrapy.Item):
+class PropertyItem(scrapy.Item):
 
     @staticmethod
     def process_title(input):

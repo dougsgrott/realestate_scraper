@@ -1,11 +1,11 @@
 import logging
 from scrapy.loader import ItemLoader
-from items import ImoveisSCCatalogItem, ImoveisSCStatusItem
+from items import CatalogItem, StatusItem
 from sqlalchemy.orm import sessionmaker
 from bs4 import BeautifulSoup
 import re
 from itemloaders.processors import TakeFirst
-from models import db_connect, ImoveisSCCatalog
+from models import db_connect, CatalogModel
 from scrapy.exceptions import CloseSpider
 import os
 
@@ -38,7 +38,7 @@ class BasicSkipper():
     def get_attr_to_compare(self, response, selector):
         page_items = []
         for sel in response.xpath(selector):
-            catalog_loader = ItemLoader(item=ImoveisSCCatalogItem(), selector=sel)
+            catalog_loader = ItemLoader(item=CatalogItem(), selector=sel)
             catalog_loader.default_output_processor = TakeFirst()
             catalog_loader.add_xpath('title', './/h2[@class="imovel-titulo"]/a/meta[@itemprop="name"]/@content')
             catalog_loader.add_xpath('code', './/div[@class="imovel-extra"]/span/text()')
@@ -56,7 +56,7 @@ class BasicSkipper():
         session = Session()
 
         for item in item_list:
-            exist_entry = session.query(ImoveisSCCatalog).filter_by(title=item["title"], code=item["code"]).first()
+            exist_entry = session.query(CatalogModel).filter_by(title=item["title"], code=item["code"]).first()
             if exist_entry:
                 num_duplicate += 1
 

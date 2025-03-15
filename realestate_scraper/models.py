@@ -23,8 +23,8 @@ def create_table(engine):
     Base.metadata.create_all(engine, checkfirst=True)
 
 
-class ImoveisSCCatalog(Base):
-    __tablename__ = "imoveis_sc_catalog"
+class CatalogModel(Base):
+    __tablename__ = "catalog"
 
     id = Column(Integer, primary_key=True)
     title = Column(String(200))
@@ -38,16 +38,14 @@ class ImoveisSCCatalog(Base):
     url_scraped_date = Column(DateTime)
 
 
-class ImoveisSCProperty(Base):
-    __tablename__ = "imoveis_sc_property"
+class PropertyModel(Base):
+    __tablename__ = "property"
 
     id = Column(Integer, primary_key=True)
     title = Column(String(200))
     code = Column(String(20))
     price = Column(String(20))
-    caracteristicas_simples = Column(String(50))
     description = Column(String(1000))
-    caracteristicas_detalhes = Column(String(50))
     address = Column(String(100))
     cidade = Column(String(20))
     advertiser = Column(String(50))
@@ -57,9 +55,24 @@ class ImoveisSCProperty(Base):
     business_type = Column(String(20))
     property_type = Column(String(20))
     url = Column(String(200))
-    # is_scraped = Column(Integer)
     scraped_date = Column(DateTime)
 
 
+class BasicInfoModel(Base):
+    __tablename__ = "basicinfo"
+
+    id = Column(Integer, primary_key=True)
+    title = Column(String(200))
+    code = Column(String(20))
+    key = Column(String(20))
+    value = Column(String(30))
 
 
+class DetailsModel(Base):
+    __tablename__ = "details"
+
+    id = Column(Integer, primary_key=True)
+    title = Column(String(200))
+    code = Column(String(20))
+    key = Column(String(20))
+    value = Column(String(30))

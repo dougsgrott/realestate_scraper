@@ -31,11 +31,11 @@ import logging
 
 
 sys.path.append("/mnt/FE86DAF186DAAA03/Python/Secondary/realestate_scraper/realestate_scraper")
-from items import ImoveisSCPropertyItem
-from models import ImoveisSCCatalog, create_table, db_connect
+from items import PropertyItem
+from models import CatalogModel, create_table, db_connect
 from sqlalchemy.orm import sessionmaker
 
-class ImoveisSCPropertySpider(Spider):
+class PropertySpider(Spider):
     name = 'imoveis_sc_properties'
 
     custom_settings = {
@@ -50,9 +50,9 @@ class ImoveisSCPropertySpider(Spider):
         'ITEM_PIPELINES': {
             # 'realestate_scraper.pipelines.UpdateCatalogDatabasePipeline': 200,
             # 'realestate_scraper.pipelines.MongoDBPipeline': 100,
-            'realestate_scraper.pipelines.SaveImoveisSCPropertyPipeline': 100,
-            'realestate_scraper.pipelines.SaveCaracteristicasSimplesPipeline': 110,
-            'realestate_scraper.pipelines.SaveCaracteristicasDetalhesPipeline': 120,
+            'realestate_scraper.pipelines.SavePropertyPipeline': 100,
+            'realestate_scraper.pipelines.SaveBasicInfoPipeline': 110,
+            'realestate_scraper.pipelines.SaveDetailsPipeline': 120,
         }
     }
 
@@ -67,12 +67,12 @@ class ImoveisSCPropertySpider(Spider):
 
         with Session() as session:
             if self.region == None:
-                rows_not_scraped = session.query(ImoveisSCCatalog).filter(ImoveisSCCatalog.url_is_scraped == 0).all()
+                rows_not_scraped = session.query(CatalogModel).filter(CatalogModel.url_is_scraped == 0).all()
             else:
-                rows_not_scraped = session.query(ImoveisSCCatalog) \
+                rows_not_scraped = session.query(CatalogModel) \
                                         .filter(
-                                            ImoveisSCCatalog.url_is_scraped == 0,
-                                            ImoveisSCCatalog.region == self.region
+                                            CatalogModel.url_is_scraped == 0,
+                                            CatalogModel.region == self.region
                                         ).all()
 
             for row in rows_not_scraped:
@@ -81,7 +81,7 @@ class ImoveisSCPropertySpider(Spider):
 
 
     def parse(self, response):
-        item_loader = ItemLoader(ImoveisSCPropertyItem(), selector=response)
+        item_loader = ItemLoader(PropertyItem(), selector=response)
 
         # Header data
         item_loader.add_xpath('title', '//*[@class="visualizar-title"]/text()') #title = response.xpath('//*[@class="visualizar-title"]/text()').getall()
@@ -158,5 +158,5 @@ class ImoveisSCPropertySpider(Spider):
 
 if __name__ == "__main__":
     process = CrawlerProcess(get_project_settings())
-    process.crawl(ImoveisSCPropertySpider) #, region="regiao oeste"
+    process.crawl(PropertySpider) #, region="regiao oeste"
     process.start()
