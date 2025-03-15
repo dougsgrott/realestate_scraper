@@ -153,6 +153,48 @@ def process_headcrumbs(input):
     return ' -> '.join(input)
 
 
+def parse_price_selectors(input):
+    cleaned_data = strip_strings(input)
+    cleaned_data = normalize_spacing_strings(cleaned_data)
+    cleaned_data = remove_empty_strings(cleaned_data)
+    cleaned_data = '<br>'.join(cleaned_data)
+    return cleaned_data
+
+
+def parse_price_text(text):
+    # Default values
+    price_value = None
+    maintenance_fee = None
+    iptu_tax = None
+    price_is_undefined = 0
+
+    # Extract price
+    price_match = re.search(r'R\$ ([0-9\.]*)', text)
+    if price_match:
+        price_value = int(price_match.group(1).replace('.', ''))
+        price_is_undefined = 0
+    elif 'Sob consulta' in text:
+        price_value = None
+        price_is_undefined = 1
+
+    # Extract maintenance fee
+    cond_match = re.search(r'COND\. R\$<br>([0-9\.]*)', text)
+    if cond_match:
+        maintenance_fee = int(cond_match.group(1).replace('.', ''))
+    
+    # Extract IPTU tax
+    iptu_match = re.search(r'IPTU R\$<br>([0-9\.]*)', text)
+    if iptu_match:
+        iptu_tax = int(iptu_match.group(1).replace('.', ''))
+    
+    return {
+        'price_value': price_value,
+        'maintenance_fee': maintenance_fee,
+        'iptu_tax': iptu_tax,
+        'price_is_undefined': price_is_undefined,
+    }
+
+
 class CatalogItem(scrapy.Item):
 
     @staticmethod
@@ -219,11 +261,33 @@ class PropertyItem(scrapy.Item):
         return input
 
     @staticmethod
-    def process_price(input):
-        cleaned_data = strip_strings(input)
-        cleaned_data = normalize_spacing_strings(cleaned_data)
-        cleaned_data = remove_empty_strings(cleaned_data)
-        return '<br>'.join(cleaned_data)
+    def process_price_text(input):
+        output = parse_price_selectors(input)
+        return output
+
+    @staticmethod
+    def process_price_value(input):
+        price_text = parse_price_selectors(input)
+        price_dict = parse_price_text(price_text)
+        return price_dict['price_value']
+
+    @staticmethod
+    def process_maintenance_fee(input):
+        price_text = parse_price_selectors(input)
+        price_dict = parse_price_text(price_text)
+        return price_dict['maintenance_fee']
+
+    @staticmethod
+    def process_iptu_tax(input):
+        price_text = parse_price_selectors(input)
+        price_dict = parse_price_text(price_text)
+        return price_dict['iptu_tax']
+
+    @staticmethod
+    def process_price_is_undefined(input):
+        price_text = parse_price_selectors(input)
+        price_dict = parse_price_text(price_text)
+        return price_dict['price_is_undefined']
 
     @staticmethod
     def process_caracteristicas_simples(input):
@@ -324,7 +388,11 @@ class PropertyItem(scrapy.Item):
 
     title = scrapy.Field(input_processor=process_title, output_processor=TakeFirst())
     code = scrapy.Field(input_processor=process_code, output_processor=TakeFirst())
-    price = scrapy.Field(input_processor=process_price, output_processor=TakeFirst())
+    price_text = scrapy.Field(input_processor=process_price_text, output_processor=TakeFirst())
+    price_value = scrapy.Field(input_processor=process_price_value, output_processor=TakeFirst())
+    maintenance_fee = scrapy.Field(input_processor=process_maintenance_fee, output_processor=TakeFirst())
+    iptu_tax = scrapy.Field(input_processor=process_iptu_tax, output_processor=TakeFirst())
+    price_is_undefined = scrapy.Field(input_processor=process_price_is_undefined, output_processor=TakeFirst())
     caracteristicas_simples = scrapy.Field(input_processor=process_caracteristicas_simples, output_processor=TakeFirst())
     description = scrapy.Field(input_processor=process_description, output_processor=TakeFirst())
     caracteristicas_detalhes = scrapy.Field(input_processor=process_caracteristicas_detalhes, output_processor=TakeFirst())

@@ -392,7 +392,7 @@ class SavePropertyPipeline(object):
         """
         session = self.factory()
         entry = PropertyModel()
-        fields = ["title", "code", "price", "description", "address", "cidade", "advertiser", "advertiser_info", "nav_headcrumbs", "local", "business_type", "property_type", "url", "scraped_date"]
+        fields = ["title", "code", "price_text", "price_value", "maintenance_fee", "iptu_tax", "price_is_undefined", "description", "address", "cidade", "advertiser", "advertiser_info", "nav_headcrumbs", "local", "business_type", "property_type", "url", "scraped_date"]
         for k in fields:
             setattr(entry, k, item[k])
         self.process_entry(entry, session)
@@ -494,6 +494,19 @@ class SaveDetailsPipeline(object):
         finally:
             session.close()
         return None
+
+
+class DefaultValuesPropertyPipeline(object):
+
+    def process_item(self, item, spider):
+        item.setdefault('price_value', None)
+        item.setdefault('maintenance_fee', None)
+        item.setdefault('iptu_tax', None)
+        item.setdefault('price_is_undefined', 0)
+        item.setdefault('description', '')
+        item.setdefault('advertiser', '')
+        item.setdefault('advertiser_info', '')
+        return item
 
 
 class LoggerImoveisSCCatalogPipeline:

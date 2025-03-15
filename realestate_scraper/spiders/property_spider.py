@@ -50,6 +50,7 @@ class PropertySpider(Spider):
         'ITEM_PIPELINES': {
             # 'realestate_scraper.pipelines.UpdateCatalogDatabasePipeline': 200,
             # 'realestate_scraper.pipelines.MongoDBPipeline': 100,
+            'realestate_scraper.pipelines.DefaultValuesPropertyPipeline': 90,
             'realestate_scraper.pipelines.SavePropertyPipeline': 100,
             'realestate_scraper.pipelines.SaveBasicInfoPipeline': 110,
             'realestate_scraper.pipelines.SaveDetailsPipeline': 120,
@@ -89,7 +90,11 @@ class PropertySpider(Spider):
         item_loader.add_xpath('code', '//*[@class="visualizar-header-extra"]/strong/text()')
 
         # 'top' Section data
-        item_loader.add_xpath('price', '//*[contains(@class, "visualizar-preco")]/descendant::*/text()')
+        item_loader.add_xpath('price_text', '//*[contains(@class, "visualizar-preco")]/descendant::*/text()')
+        item_loader.add_xpath('price_value', '//*[contains(@class, "visualizar-preco")]/descendant::*/text()')
+        item_loader.add_xpath('maintenance_fee', '//*[contains(@class, "visualizar-preco")]/descendant::*/text()')
+        item_loader.add_xpath('iptu_tax', '//*[contains(@class, "visualizar-preco")]/descendant::*/text()')
+        item_loader.add_xpath('price_is_undefined', '//*[contains(@class, "visualizar-preco")]/descendant::*/text()')
         item_loader.add_xpath('caracteristicas_simples', '//ol[@class="visualizar-info-opcoes"]/li') #/*[@class="valores"]
 
         # 'descricao' Section data
@@ -135,7 +140,7 @@ class PropertySpider(Spider):
             'title': response.xpath('//*[@class="visualizar-title"]/text()').extract(),
             'code': [response.xpath('//*[@class="visualizar-info-codigo"]/text()').extract(),
                      response.xpath('//*[@class="visualizar-header-extra"]/strong/text()').extract()],
-            'price': response.xpath('//*[contains(@class, "visualizar-preco")]/descendant::*/text()').extract(),
+            'price_text': response.xpath('//*[contains(@class, "visualizar-preco")]/descendant::*/text()').extract(),
             'caracteristicas_simples': response.xpath('//ol[@class="visualizar-info-opcoes"]/li').extract(), #/*[@class="valores"]
             'description': response.xpath('//*[@class="visualizar-descricao"]/descendant::*/text()').extract(),
             'caracteristicas_detalhes': response.xpath('//*[@class="visualizacao-caracteristica-lista"]/li').extract(),
