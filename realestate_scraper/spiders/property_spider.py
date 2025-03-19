@@ -48,7 +48,7 @@ class PropertySpider(Spider):
         'DOWNLOAD_DELAY': 2,
         'ROBOTSTXT_OBEY': False,
         'ITEM_PIPELINES': {
-            # 'realestate_scraper.pipelines.UpdateCatalogDatabasePipeline': 200,
+            'realestate_scraper.pipelines.UpdateCatalogDatabasePipeline': 200,
             # 'realestate_scraper.pipelines.MongoDBPipeline': 100,
             'realestate_scraper.pipelines.DefaultValuesPropertyPipeline': 90,
             'realestate_scraper.pipelines.SavePropertyPipeline': 100,
@@ -57,11 +57,12 @@ class PropertySpider(Spider):
         }
     }
 
-    def __init__(self, region=None, *args, **kwargs):
+    def __init__(self, start_urls=None, region=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.region = region
+        self.start_urls = start_urls
 
-    def start_requests(self):
+    def get_urls_from_db(self):
         engine = db_connect()
         create_table(engine)
         Session = sessionmaker(bind=engine)
@@ -77,8 +78,14 @@ class PropertySpider(Spider):
                                         ).all()
 
             for row in rows_not_scraped:
-                time.sleep(random.randint(3,7))
+                time.sleep(random.randint(3,6))
                 yield Request(url=row.url, callback=self.parse, meta={'catalogo_id': row.id})
+
+    def start_requests(self):
+        if self.start_urls != None:
+            yield Request(url=self.start_urls, callback=self.parse) #, meta={'catalogo_id': row.id}
+
+        return self.get_urls_from_db()
 
 
     def parse(self, response):
@@ -163,5 +170,5 @@ class PropertySpider(Spider):
 
 if __name__ == "__main__":
     process = CrawlerProcess(get_project_settings())
-    process.crawl(PropertySpider) #, region="regiao oeste"
+    process.crawl(PropertySpider, start_urls='https://www.imoveis-sc.com.br/florianopolis/alugar/casa/centro/casa-florianopolis-centro-1325552.html') #, region="regiao oeste"
     process.start()
