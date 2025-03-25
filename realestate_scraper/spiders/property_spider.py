@@ -31,6 +31,7 @@ import logging
 
 
 sys.path.append("/mnt/FE86DAF186DAAA03/Python/Secondary/realestate_scraper/realestate_scraper")
+import settings
 from items import PropertyItem
 from models import CatalogModel, create_table, db_connect
 from sqlalchemy.orm import sessionmaker
@@ -60,7 +61,8 @@ class PropertySpider(Spider):
     def __init__(self, start_urls=None, region=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.region = region
-        self.start_urls = start_urls
+        if start_urls != None:
+            self.start_urls = start_urls
 
     def get_urls_from_db(self):
         engine = db_connect()
@@ -82,10 +84,10 @@ class PropertySpider(Spider):
                 yield Request(url=row.url, callback=self.parse, meta={'catalogo_id': row.id})
 
     def start_requests(self):
-        if self.start_urls != None:
+        if self.start_urls != []:
             yield Request(url=self.start_urls, callback=self.parse) #, meta={'catalogo_id': row.id}
 
-        return self.get_urls_from_db()
+        yield from self.get_urls_from_db()
 
 
     def parse(self, response):
@@ -141,6 +143,7 @@ class PropertySpider(Spider):
         item_loader.add_value('url', response.url)
         item_loader.add_value('scraped_date', datetime.now()) #.isoformat(' ')
         item_loader.add_value('is_scraped', 0) #.isoformat(' ')
+        item_loader.add_value('raw_html', response.text if settings.SAVE_RAW_HTML else '')
 
         loaded_item = item_loader.load_item()
         raw_values = {
@@ -170,5 +173,6 @@ class PropertySpider(Spider):
 
 if __name__ == "__main__":
     process = CrawlerProcess(get_project_settings())
-    process.crawl(PropertySpider, start_urls='https://www.imoveis-sc.com.br/florianopolis/alugar/casa/centro/casa-florianopolis-centro-1325552.html') #, region="regiao oeste"
+    # process.crawl(PropertySpider, start_urls='https://www.imoveis-sc.com.br/florianopolis/alugar/casa/centro/casa-florianopolis-centro-1325552.html') #, region="regiao oeste"
+    process.crawl(PropertySpider) #, region="regiao oeste"
     process.start()

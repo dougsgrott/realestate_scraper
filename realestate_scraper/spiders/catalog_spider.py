@@ -61,7 +61,7 @@ class CatalogSpider(Spider):
         self.page_items = []
         self.duplicated_page_count = 0
         self.skipping = False
-        self.planner = BasicSkipper(threshold=3, skip_n=10)
+        self.planner = BasicSkipper(threshold=10, skip_n=10)
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
@@ -87,7 +87,7 @@ class CatalogSpider(Spider):
         self.page_items = []
         selector = '//article[@class="imovel  "]'
         
-        new_page = self.planner.foo(response, selector, self.parse)
+        # new_page = self.planner.foo(response, selector, self.parse)
         time.sleep(random.randint(3,7))
 
         for sel in response.xpath(selector):
@@ -108,11 +108,11 @@ class CatalogSpider(Spider):
         # if self.close_due_to_redundancy:
         #     if (settings.redundancy_streak > self.redundancy_threshold):
         # self.foo(response, selector)
-        if new_page == None:
-            raise CloseSpider()
-        yield response.follow(new_page, self.parse)
+        # if new_page == None:
+        #     raise CloseSpider()
+        # yield response.follow(new_page, self.parse)
 
-        # yield self.paginate(response)
+        yield self.paginate(response)
 
     # 2. SCRAPING LEVEL 1
     def populate_catalog(self, selector, url):
@@ -127,6 +127,7 @@ class CatalogSpider(Spider):
         catalog_loader.add_value('scraped_date', datetime.now()) #.isoformat(' ')
         catalog_loader.add_xpath('url', './/a[contains(@class, "btn-visualizar")]/@href')
         catalog_loader.add_value('url_is_scraped', 0)
+        catalog_loader.add_value('raw_html', selector.get() if settings.SAVE_RAW_HTML else '')
         loaded_item = catalog_loader.load_item()
         self.page_items.append(loaded_item)
         return loaded_item

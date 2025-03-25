@@ -392,7 +392,7 @@ class SavePropertyPipeline(object):
         """
         session = self.factory()
         entry = PropertyModel()
-        fields = ["title", "code", "price_text", "price_value", "maintenance_fee", "iptu_tax", "price_is_undefined", "description", "address", "cidade", "advertiser", "advertiser_info", "nav_headcrumbs", "local", "business_type", "property_type", "url", "scraped_date"]
+        fields = ["title", "code", "price_text", "price_value", "maintenance_fee", "iptu_tax", "price_is_undefined", "description", "address", "cidade", "advertiser", "advertiser_info", "nav_headcrumbs", "local", "business_type", "property_type", "url", "scraped_date", "raw_html"]
         for k in fields:
             setattr(entry, k, item[k])
         self.process_entry(entry, session)
@@ -548,7 +548,7 @@ class UpdateCatalogDatabasePipeline(object):
         # catalog = ImoveisSCCatalog()
         # catalog.title = item["title"]
 
-        scraped_row = session.query(ImoveisSCCatalog).filter_by(url=item["url"]).first()
+        scraped_row = session.query(CatalogModel).filter_by(url=item["url"]).first()
         scraped_row.url_is_scraped = 1
         scraped_row.url_scraped_date = datetime.now()
 

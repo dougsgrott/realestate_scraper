@@ -117,3 +117,5 @@ CONNECTION_STRING = 'sqlite:///' + os.path.join(file_path, os.path.join('scraped
 # }
 
 # TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
+
+SAVE_RAW_HTML = True

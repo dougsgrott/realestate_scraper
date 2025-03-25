@@ -5,6 +5,7 @@ from sqlalchemy import Integer, String, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base, Mapped, mapped_column, DeclarativeBase, Session
 from scrapy.utils.project import get_project_settings
 import os
+from sqlalchemy import Text
 
 
 class Base(DeclarativeBase):
@@ -36,6 +37,7 @@ class CatalogModel(Base):
     url = Column(String(200))
     url_is_scraped = Column(Integer)
     url_scraped_date = Column(DateTime)
+    raw_html = Column(Text)
 
 
 class PropertyModel(Base):
@@ -60,6 +62,7 @@ class PropertyModel(Base):
     property_type = Column(String(20))
     url = Column(String(200))
     scraped_date = Column(DateTime)
+    raw_html = Column(Text)
 
 
 class BasicInfoModel(Base):
