@@ -37,7 +37,7 @@ class CatalogModel(Base):
     url = Column(String(200))
     url_is_scraped = Column(Integer)
     url_scraped_date = Column(DateTime)
-    raw_html = Column(Text)
+    # raw_html = Column(Text)
 
 
 class PropertyModel(Base):
@@ -60,6 +60,25 @@ class PropertyModel(Base):
     local = Column(String(20))
     business_type = Column(String(20))
     property_type = Column(String(20))
+    url = Column(String(200))
+    scraped_date = Column(DateTime)
+    # raw_html = Column(Text)
+
+
+class HtmlCatalogModel(Base):
+    __tablename__ = "html_catalog"
+
+    id = Column(Integer, primary_key=True)
+    current_url = Column(String(200))
+    scraped_date = Column(DateTime)
+    next_url = Column(String(200))
+    raw_html = Column(Text)
+
+
+class HtmlPropertyModel(Base):
+    __tablename__ = "html_property"
+
+    id = Column(Integer, primary_key=True)
     url = Column(String(200))
     scraped_date = Column(DateTime)
     raw_html = Column(Text)

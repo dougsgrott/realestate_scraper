@@ -237,7 +237,7 @@ class CatalogItem(scrapy.Item):
     url = scrapy.Field()
     url_is_scraped = scrapy.Field()
     url_scraped_date = scrapy.Field()
-    raw_html = scrapy.Field()
+    # raw_html = scrapy.Field()
 
 
 class StatusItem(scrapy.Item):
@@ -408,4 +408,19 @@ class PropertyItem(scrapy.Item):
     url = scrapy.Field(input_processor=process_url, output_processor=TakeFirst())
     is_scraped = scrapy.Field(input_processor=process_is_scraped, output_processor=TakeFirst())
     scraped_date = scrapy.Field(input_processor=process_scraped_date, output_processor=TakeFirst())
-    raw_html = scrapy.Field(output_processor=TakeFirst())
+    # raw_html = scrapy.Field(output_processor=TakeFirst())
+
+
+class HtmlCatalogItem(scrapy.Item):
+
+    current_url = scrapy.Field()
+    scraped_date = scrapy.Field()
+    next_url = scrapy.Field()
+    raw_html = scrapy.Field()
+
+
+class HtmlPropertyItem(scrapy.Item):
+
+    url = scrapy.Field()
+    scraped_date = scrapy.Field()
+    raw_html = scrapy.Field()

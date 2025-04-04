@@ -7,7 +7,7 @@
 # useful for handling different item types with a single interface
 from itemadapter import ItemAdapter
 from sqlalchemy.orm import sessionmaker, Session
-from models import CatalogModel, PropertyModel, BasicInfoModel, DetailsModel, create_table, db_connect
+from models import CatalogModel, PropertyModel, HtmlCatalogModel, HtmlPropertyModel, BasicInfoModel, DetailsModel, create_table, db_connect
 import json
 from itemadapter import ItemAdapter
 from datetime import datetime
@@ -358,6 +358,73 @@ class SaveCatalogPipeline(object):
         """
         session = self.factory()
         entry = CatalogModel()
+        for k in item.keys():
+            setattr(entry, k, item[k])
+        try:
+            print('Entry added')
+            session.add(entry)
+            session.commit()
+            settings.saved = settings.saved + 1
+            settings.redundancy_streak = 0
+        except:
+            print('rollback')
+            session.rollback()
+            raise
+        finally:
+            session.close()
+        return item
+
+class SaveHtmlCatalogPipeline(object):
+    def __init__(self):
+        """
+        Initializes database connection and sessionmaker
+        Creates tables
+        """
+        engine = db_connect()
+        create_table(engine)
+        self.factory = sessionmaker(bind=engine)
+
+    def process_item(self, item, spider):
+        """
+        Save real estate index in the database
+        This method is called for every item pipeline component
+        """
+        session = self.factory()
+        entry = HtmlCatalogModel()
+        for k in item.keys():
+            setattr(entry, k, item[k])
+        try:
+            print('Entry added')
+            session.add(entry)
+            session.commit()
+            settings.saved = settings.saved + 1
+            settings.redundancy_streak = 0
+        except:
+            print('rollback')
+            session.rollback()
+            raise
+        finally:
+            session.close()
+        return item
+
+
+class SaveHtmlPropertyPipeline(object):
+    def __init__(self):
+        """
+        Initializes database connection and sessionmaker
+        Creates tables
+        """
+        engine = db_connect()
+        create_table(engine)
+        self.factory = sessionmaker(bind=engine)
+
+    def process_item(self, item, spider):
+        """
+        Save real estate index in the database
+        This method is called for every item pipeline component
+        """
+        session = self.factory()
+        entry = HtmlPropertyModel()
         for k in item.keys():
             setattr(entry, k, item[k])
         try:
