@@ -324,14 +324,8 @@ class PropertyItem(scrapy.Item):
         parsed_dict = {}
         for i in input:
             soup = BeautifulSoup(i, "html.parser")
-            key = soup.find("div", class_=lambda x: x and "subtitle" in x)
-            key = key.get_text() if key else None
-            key = strip_strings([key])[0]
-
-            match = re.search(r"<li>(.*?)</li>", i)
-            value = match.group(1) if match else None
-            value = strip_strings([value])[0]
-
+            key = soup.find("div", class_=lambda x: x).text
+            value = soup.text.strip()
             parsed_dict[key] = value
         return parsed_dict
 
