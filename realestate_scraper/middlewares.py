@@ -11,6 +11,93 @@ from itemadapter import is_item, ItemAdapter
 import logging
 from scrapy import logformatter
 
+from scrapy.http import HtmlResponse
+from models import CatalogModel, HtmlCatalogModel, HtmlPropertyModel, db_connect, create_table
+from sqlalchemy.orm import sessionmaker
+
+
+class FakeCatalogResponseMiddleware:
+    def __init__(self):
+        # Set up the SQLAlchemy session
+        engine = db_connect()
+        create_table(engine)
+        self.Session = sessionmaker(bind=engine)
+        self.logger = logging.getLogger(__name__)
+
+    def process_request(self, request, spider):
+        # Only activate when fake scraping is enabled
+        # if getattr(spider, 'USE_FAKE_SCRAPING', False):
+        # if spider.settings.getbool('USE_FAKE_SCRAPING', False):
+        session = self.Session()
+        try:
+            # Query the database for a record with the matching URL
+            record = session.query(HtmlCatalogModel).filter_by(current_url=request.url).first()
+            if record and record.raw_html:
+                self.logger.info(f"Returning fake response for {request.url}")
+                # Create and return a fake HtmlResponse using the stored raw_html
+                return HtmlResponse(
+                    url=request.url,
+                    body=record.raw_html,#.encode('utf-8'),
+                    encoding='utf-8',
+                    request=request
+                )
+            else:
+                self.logger.info(f"No fake data found for {request.url}. Returning fake 404 response.")
+                # Return a fake response (e.g., 404) so that no network request is made
+                return HtmlResponse(
+                    url=request.url,
+                    status=404,
+                    body=b'',
+                    encoding='utf-8',
+                    request=request
+                )
+        finally:
+            session.close()
+        # Otherwise, proceed with normal downloading
+        # return None
+
+
+class FakePropertyResponseMiddleware:
+    def __init__(self):
+        # Set up the SQLAlchemy session
+        engine = db_connect()
+        create_table(engine)
+        self.Session = sessionmaker(bind=engine)
+        self.logger = logging.getLogger(__name__)
+
+    def process_request(self, request, spider):
+        # Only activate when fake scraping is enabled
+        # if getattr(spider, 'USE_FAKE_SCRAPING', False):
+        # if spider.settings.getbool('USE_FAKE_SCRAPING', False):
+        session = self.Session()
+        try:
+            # Query the database for a record with the matching URL
+            record = session.query(HtmlPropertyModel).filter_by(url=request.url).first()
+            if record and record.raw_html:
+                self.logger.info(f"Returning fake response for {request.url}")
+                # Create and return a fake HtmlResponse using the stored raw_html
+                return HtmlResponse(
+                    url=request.url,
+                    body=record.raw_html,#.encode('utf-8'),
+                    encoding='utf-8',
+                    request=request
+                )
+            else:
+                self.logger.info(f"No fake data found for {request.url}. Returning fake 404 response.")
+                # Return a fake response (e.g., 404) so that no network request is made
+                return HtmlResponse(
+                    url=request.url,
+                    status=404,
+                    body=b'',
+                    encoding='utf-8',
+                    request=request
+                )
+        finally:
+            session.close()
+        # Otherwise, proceed with normal downloading
+        # return None
+
+
 class RealestateScraperSpiderMiddleware:
     # Not all methods need to be defined. If a method is not defined,
     # scrapy acts as if the spider middleware does not modify the

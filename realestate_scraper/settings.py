@@ -25,11 +25,12 @@ NEWSPIDER_MODULE = 'realestate_scraper.spiders'
 ROBOTSTXT_OBEY = False
 
 DOWNLOADER_MIDDLEWARES = {
-        'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
-        'scrapy.downloadermiddlewares.retry.RetryMiddleware': None,
-        # 'scrapy_fake_useragent.middleware.RandomUserAgentMiddleware': 400,
-        # 'scrapy_fake_useragent.middleware.RetryUserAgentMiddleware': 401,
-    }
+    'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+    'scrapy.downloadermiddlewares.retry.RetryMiddleware': None,
+    # 'scrapy_fake_useragent.middleware.RandomUserAgentMiddleware': 400,
+    # 'scrapy_fake_useragent.middleware.RetryUserAgentMiddleware': 401,
+    # 'realestate_scraper.middlewares.FakeResponseMiddleware': 543,
+}
 
 
 # FAKEUSERAGENT_PROVIDERS = [
@@ -88,6 +89,8 @@ CONCURRENT_REQUESTS = 8
 
 file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 CONNECTION_STRING = 'sqlite:///' + os.path.join(file_path, os.path.join('scraped_data', 'imoveis_sc.sqlite'))
+# CONNECTION_STRING = 'sqlite:///' + os.path.join(file_path, os.path.join('scraped_data', 'html_imoveis_sc.sqlite'))
+
 # CONNECTION_STRING = 'sqlite:///imoveis_sc.db'
 
 # Enable and configure the AutoThrottle extension (disabled by default)
@@ -118,4 +121,7 @@ CONNECTION_STRING = 'sqlite:///' + os.path.join(file_path, os.path.join('scraped
 
 # TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 
-SAVE_RAW_HTML = True
+# SAVE_RAW_HTML = True
+
+# Enable fake scraping mode
+# USE_FAKE_SCRAPING = True

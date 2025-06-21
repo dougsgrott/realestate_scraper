@@ -459,7 +459,7 @@ class SavePropertyPipeline(object):
         """
         session = self.factory()
         entry = PropertyModel()
-        fields = ["title", "code", "price_text", "price_value", "maintenance_fee", "iptu_tax", "price_is_undefined", "description", "address", "cidade", "advertiser", "advertiser_info", "nav_headcrumbs", "local", "business_type", "property_type", "url", "scraped_date", "raw_html"]
+        fields = ["title", "code", "price_text", "price_value", "maintenance_fee", "iptu_tax", "price_is_undefined", "description", "address", "cidade", "advertiser", "advertiser_info", "nav_headcrumbs", "local", "business_type", "property_type", "url", "scraped_date"]
         for k in fields:
             setattr(entry, k, item[k])
         self.process_entry(entry, session)

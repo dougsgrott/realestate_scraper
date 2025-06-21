@@ -33,24 +33,20 @@ import logging
 sys.path.append("/mnt/FE86DAF186DAAA03/Python/Secondary/realestate_scraper/realestate_scraper")
 import settings
 from items import PropertyItem
-from models import CatalogModel, create_table, db_connect
+from models import CatalogModel, HtmlCatalogModel, HtmlPropertyModel, create_table, db_connect
 from sqlalchemy.orm import sessionmaker
+
 
 class PropertySpider(Spider):
     name = 'imoveis_sc_properties'
 
     custom_settings = {
-        # 'MONGODB_URI': 'mongodb://localhost:27017',
-        # 'MONGODB_DATABASE': 'imoveis-sc',
-        # 'MONGODB_COLLECTION': 'properties',
-        # 'MONGODB_UNIQUE_KEY': 'url',
         'AUTOTHROTTLE_ENABLED': True,
         'AUTOTHROTTLE_DEBUG': True,
         'DOWNLOAD_DELAY': 2,
         'ROBOTSTXT_OBEY': False,
         'ITEM_PIPELINES': {
             'realestate_scraper.pipelines.UpdateCatalogDatabasePipeline': 200,
-            # 'realestate_scraper.pipelines.MongoDBPipeline': 100,
             'realestate_scraper.pipelines.DefaultValuesPropertyPipeline': 90,
             'realestate_scraper.pipelines.SavePropertyPipeline': 100,
             'realestate_scraper.pipelines.SaveBasicInfoPipeline': 110,
@@ -58,11 +54,13 @@ class PropertySpider(Spider):
         }
     }
 
-    def __init__(self, start_urls=None, region=None, *args, **kwargs):
+    def __init__(self, start_urls=None, region=None, min_delay=3, max_delay=7, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.region = region
         if start_urls != None:
             self.start_urls = start_urls
+        self.min_delay = min_delay
+        self.max_delay = max_delay
 
     def get_urls_from_db(self):
         engine = db_connect()
@@ -73,20 +71,19 @@ class PropertySpider(Spider):
             if self.region == None:
                 rows_not_scraped = session.query(CatalogModel).filter(CatalogModel.url_is_scraped == 0).all()
             else:
-                rows_not_scraped = session.query(CatalogModel) \
+                rows_not_scraped = (session.query(CatalogModel)
                                         .filter(
                                             CatalogModel.url_is_scraped == 0,
                                             CatalogModel.region == self.region
-                                        ).all()
+                                        ).all())
 
             for row in rows_not_scraped:
-                time.sleep(random.randint(3,6))
+                time.sleep(random.randint(self.min_delay, self.max_delay))
                 yield Request(url=row.url, callback=self.parse, meta={'catalogo_id': row.id})
 
     def start_requests(self):
         if self.start_urls != []:
             yield Request(url=self.start_urls, callback=self.parse) #, meta={'catalogo_id': row.id}
-
         yield from self.get_urls_from_db()
 
 
@@ -110,12 +107,6 @@ class PropertySpider(Spider):
         item_loader.add_xpath('description', '//*[@class="visualizar-descricao"]/descendant::*/text()')
 
         # 'caracteristicas' Section data
-        # for li in response.xpath('//*[@class="visualizacao-caracteristica-lista"]/li'):
-        #     caracteristicas_detalhes = {}
-        #     key = li.xpath('.//*[@class="visualizacao-section-subtitle"]/text()').get()
-        #     value = li.xpath('./ul/li/text()').getall()
-        #     caracteristicas_detalhes[key] = value
-        # item_loader.add_value('caracteristicas_detalhes', caracteristicas_detalhes)
         item_loader.add_xpath('caracteristicas_detalhes', '//*[@class="visualizacao-caracteristica-lista"]/li')
 
         # 'endereco' Section data
@@ -133,8 +124,6 @@ class PropertySpider(Spider):
             item_loader.add_value('cidade', nav_headcrumbs[1])
         else:
             item_loader.add_value('cidade', "")
-        # item_loader.add_value('cidade', nav_headcrumbs[1])
-        # item_loader.add_xpath('cidade', '//*[@class="visualizar-info-location"]/text()')
 
         # auxiliary data
         item_loader.add_value('local', response.url)
@@ -142,37 +131,65 @@ class PropertySpider(Spider):
         item_loader.add_value('property_type', response.url)
         item_loader.add_value('url', response.url)
         item_loader.add_value('scraped_date', datetime.now()) #.isoformat(' ')
-        item_loader.add_value('is_scraped', 0) #.isoformat(' ')
-        item_loader.add_value('raw_html', response.text if settings.SAVE_RAW_HTML else '')
+        item_loader.add_value('is_scraped', 0)
 
         loaded_item = item_loader.load_item()
-        raw_values = {
-            'title': response.xpath('//*[@class="visualizar-title"]/text()').extract(),
-            'code': [response.xpath('//*[@class="visualizar-info-codigo"]/text()').extract(),
-                     response.xpath('//*[@class="visualizar-header-extra"]/strong/text()').extract()],
-            'price_text': response.xpath('//*[contains(@class, "visualizar-preco")]/descendant::*/text()').extract(),
-            'caracteristicas_simples': response.xpath('//ol[@class="visualizar-info-opcoes"]/li').extract(), #/*[@class="valores"]
-            'description': response.xpath('//*[@class="visualizar-descricao"]/descendant::*/text()').extract(),
-            'caracteristicas_detalhes': response.xpath('//*[@class="visualizacao-caracteristica-lista"]/li').extract(),
-            'address': response.xpath('//*[@class="visualizar-endereco-texto"]/text()').extract(),
-            'advertiser': advertiser,
-            'advertiser_creci': advertiser_creci,
-            'nav_headcrumbs': nav_headcrumbs,
-            'cidade': nav_headcrumbs[1],
-            'local': response.url,
-            'business_type': response.url,
-            'property_type': response.url,
-            'url': response.url,
-            'scraped_date': 'some_date', #datetime.now()
-            'is_scraped': 0,
-            # 'foo': response.xpath('').extract(),
-        }
-
         return loaded_item
+
+
+class FakePropertySpider(PropertySpider):
+    name = 'imoveis_sc_fake_properties'
+
+    custom_settings = {
+        'AUTOTHROTTLE_ENABLED': True,
+        'AUTOTHROTTLE_DEBUG': True,
+        'ROBOTSTXT_OBEY': False,
+        'ITEM_PIPELINES': {
+            'realestate_scraper.pipelines.UpdateCatalogDatabasePipeline': 200,
+            'realestate_scraper.pipelines.DefaultValuesPropertyPipeline': 90,
+            'realestate_scraper.pipelines.SavePropertyPipeline': 100,
+            'realestate_scraper.pipelines.SaveBasicInfoPipeline': 110,
+            'realestate_scraper.pipelines.SaveDetailsPipeline': 120,
+        },
+        'DOWNLOADER_MIDDLEWARES': {
+            'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+            'scrapy.downloadermiddlewares.retry.RetryMiddleware': None,
+            'realestate_scraper.middlewares.FakePropertyResponseMiddleware': 543,
+        },
+    }
+
+    def __init__(self, start_urls=None, *args, **kwargs): #region=None, 
+        super().__init__(*args, **kwargs)
+        # self.region = region
+        # if start_urls != None:
+        #     self.start_urls = start_urls
+        self.min_delay = 0
+        self.max_delay = 0
+
+    def get_urls_from_db(self):
+        engine = db_connect()
+        create_table(engine)
+        Session = sessionmaker(bind=engine)
+
+        with Session() as session:
+            rows = session.query(HtmlPropertyModel).all()
+            # if self.region == None:
+                # rows_not_scraped = session.query(HtmlCatalogModel).filter(HtmlCatalogModel.url_is_scraped == 0).all()
+            # else:
+            #     rows_not_scraped = (session.query(HtmlCatalogModel)
+            #                             .filter(
+            #                                 HtmlCatalogModel.url_is_scraped == 0,
+            #                                 HtmlCatalogModel.region == self.region
+            #                             ).all())
+
+        for row in rows:
+            time.sleep(random.randint(self.min_delay, self.max_delay))
+            yield Request(url=row.url, callback=self.parse, meta={'catalogo_id': row.id})
 
 
 if __name__ == "__main__":
     process = CrawlerProcess(get_project_settings())
     # process.crawl(PropertySpider, start_urls='https://www.imoveis-sc.com.br/florianopolis/alugar/casa/centro/casa-florianopolis-centro-1325552.html') #, region="regiao oeste"
-    process.crawl(PropertySpider) #, region="regiao oeste"
+    # process.crawl(PropertySpider) #, region="regiao oeste"
+    process.crawl(FakePropertySpider) #, region="regiao oeste"
     process.start()

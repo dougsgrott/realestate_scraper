@@ -42,8 +42,6 @@ class CatalogSpider(Spider):
     customLogger.addHandler(file_handler)
 
     custom_settings = {
-        # 'LOG_FILE': 'imoveis_sc_catalog_spider.log',
-        # 'LOG_LEVEL': 'INFO',
         'AUTOTHROTTLE_ENABLED': True,
         'AUTOTHROTTLE_DEBUG': True,
         'DOWNLOAD_DELAY': 3,
@@ -54,7 +52,7 @@ class CatalogSpider(Spider):
         },
     }
 
-    def __init__(self, start_urls, close_due_to_redundancy=False, *args, **kwargs):
+    def __init__(self, start_urls, close_due_to_redundancy=False, min_delay=3, max_delay=7, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.start_urls = start_urls
         self.close_due_to_redundancy = close_due_to_redundancy
@@ -62,6 +60,8 @@ class CatalogSpider(Spider):
         self.duplicated_page_count = 0
         self.skipping = False
         self.planner = BasicSkipper(threshold=10, skip_n=10)
+        self.min_delay = min_delay
+        self.max_delay = max_delay
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
@@ -86,9 +86,9 @@ class CatalogSpider(Spider):
     def parse(self, response):
         self.page_items = []
         selector = '//article[@class="imovel  "]'
-        
+
         # new_page = self.planner.foo(response, selector, self.parse)
-        time.sleep(random.randint(3,7))
+        time.sleep(random.randint(self.min_delay, self.max_delay))
 
         for sel in response.xpath(selector):
             yield self.populate_catalog(sel, response.url)
@@ -127,7 +127,6 @@ class CatalogSpider(Spider):
         catalog_loader.add_value('scraped_date', datetime.now()) #.isoformat(' ')
         catalog_loader.add_xpath('url', './/a[contains(@class, "btn-visualizar")]/@href')
         catalog_loader.add_value('url_is_scraped', 0)
-        catalog_loader.add_value('raw_html', selector.get() if settings.SAVE_RAW_HTML else '')
         loaded_item = catalog_loader.load_item()
         self.page_items.append(loaded_item)
         return loaded_item
@@ -139,9 +138,34 @@ class CatalogSpider(Spider):
             return response.follow(next_page_url, self.parse)
 
 
+class FakeCatalogSpider(CatalogSpider):
+    name = 'imoveis_sc_fake_catalog'
+    custom_settings = {
+        'AUTOTHROTTLE_ENABLED': True,
+        'AUTOTHROTTLE_DEBUG': True,
+        'ROBOTSTXT_OBEY': False,
+        'ITEM_PIPELINES': {
+            'realestate_scraper.pipelines.DuplicatesCatalogPipeline': 100,
+            'realestate_scraper.pipelines.SaveCatalogPipeline': 200,
+        },
+        'DOWNLOADER_MIDDLEWARES': {
+            'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+            'scrapy.downloadermiddlewares.retry.RetryMiddleware': None,
+            'realestate_scraper.middlewares.FakeCatalogResponseMiddleware': 543,
+        },
+    }
+
+    def __init__(self, start_urls, *args, **kwargs):
+        super().__init__(start_urls, *args, **kwargs)
+        self.start_urls = start_urls
+        self.min_delay = 0
+        self.max_delay = 0
+
+
 if __name__ == '__main__':
     process = CrawlerProcess(get_project_settings())
-    process.crawl(CatalogSpider, start_urls=['https://www.imoveis-sc.com.br/regiao-serra/'])
+    # process.crawl(CatalogSpider, start_urls=['https://www.imoveis-sc.com.br/regiao-serra/'])
+    process.crawl(FakeCatalogSpider, start_urls=['https://www.imoveis-sc.com.br/regiao-serra/'])
     process.start()
 
     # Possible start_urls:
